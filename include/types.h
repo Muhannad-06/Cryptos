@@ -5,8 +5,12 @@
 
 typedef enum
 {
-    Valid = 0,
-    Invalid,
+    SUCCESS = 0,
+    FAILURE,
+    ERROR_WRITE_FAILED,
+    ERROR_READ_FAILED,
+    MEMORY_ALLOCATION_FAILED,
+    FILE_NOT_FOUND,
     BUFFER_OVERFLOW,
     TIMEOUT,
     NULL_POINTER,
