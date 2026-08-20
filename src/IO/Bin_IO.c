@@ -96,9 +96,14 @@ ErrorCode IO_enumReadBytes(FILE *fp, void *buffer, size_t size)
 
 ErrorCode IO_charReadString(FILE *fp, uint16_t length, char **out_str)
 {
-    if (fp == NULL || out_str == NULL) {
+    if (fp == NULL) {
+        return FILE_NOT_FOUND;
+    }
+    if (out_str == NULL)
+    {
         return NULL_POINTER;
     }
+    
 
     *out_str = NULL;
 

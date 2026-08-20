@@ -42,7 +42,7 @@ ErrorCode IO_enumReadU8(FILE *fp, uint8_t *out_val);
 ErrorCode IO_enumReadU16(FILE *fp, uint16_t *out_val);
 ErrorCode IO_enumReadU32(FILE *fp, uint32_t *out_val);
 ErrorCode IO_enumReadBytes(FILE *fp, void *buffer, size_t size);
-char* IO_charReadString(FILE *fp, uint16_t length);
+ErrorCode IO_charReadString(FILE *fp, uint16_t length, char **out_str);
 
 /*============================================================================================================*/
 
