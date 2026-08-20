@@ -96,8 +96,12 @@ ErrorCode IO_enumReadBytes(FILE *fp, void *buffer, size_t size)
 
 ErrorCode IO_charReadString(FILE *fp, uint16_t length, char **out_str)
 {
-    if (fp == NULL || out_str == NULL) {
+    if (fp == NULL) {
         return NULL_POINTER;
+    }
+    if (out_str == NULL)
+    {
+        return FILE_NOT_FOUND;
     }
 
     *out_str = NULL;
@@ -125,7 +129,7 @@ uint32_t IO_u32Tell(FILE *fp)
 {
     long pos = ftell(fp);
     if (pos == -1L) {
-        return FAILURE; // 
+        return FAILURE; 
     }
     return (uint32_t)pos;
 }
