@@ -94,19 +94,29 @@ ErrorCode IO_enumReadBytes(FILE *fp, void *buffer, size_t size)
     return SUCCESS;
 }
 
-char* IO_charReadString(FILE *fp, uint16_t length)
+ErrorCode IO_charReadString(FILE *fp, uint16_t length, char **out_str)
 {
-    if (fp == NULL) return FILE_NOT_FOUND; 
-    char *str = (char*)malloc(length + 1);
-    if (!str) return MEMORY_ALLOCATION_FAILED;
-    
-    if (fread(str, 1, length, fp) != length) {
-        free(str);
-        return ERROR_READ_FAILED;
+    if (fp == NULL || out_str == NULL) {
+        return NULL_POINTER;
     }
-    
-    str[length] = '\0'; // Ensure string is null-terminated
-    return str;
+
+    *out_str = NULL;
+
+    char *str = (char *)malloc((size_t)length + 1);
+    if (!str) {
+        return MEMORY_ALLOCATION_FAILED;
+    }
+
+    if (length > 0) {
+        if (fread(str, 1, length, fp) != length) {
+            free(str);
+            return ERROR_READ_FAILED;
+        }
+    }
+
+    str[length] = '\0';
+    *out_str = str;
+    return SUCCESS;
 }
 
 
