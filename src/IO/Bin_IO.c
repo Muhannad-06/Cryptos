@@ -103,7 +103,6 @@ ErrorCode IO_charReadString(FILE *fp, uint16_t length, char **out_str)
     {
         return NULL_POINTER;
     }
-    
 
     *out_str = NULL;
 
@@ -130,7 +129,7 @@ uint32_t IO_u32Tell(FILE *fp)
 {
     long pos = ftell(fp);
     if (pos == -1L) {
-        return FAILURE; // 
+        return FAILURE;  
     }
     return (uint32_t)pos;
 }
