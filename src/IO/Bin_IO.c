@@ -1,8 +1,8 @@
-#include "Bin_IO.h"
+#include "../../include/Bin_IO.h"
 #include <stdlib.h>
 #include <string.h>
 
-#include "types.h"
+#include "../../include/types.h"
 
 ErrorCode IO_enumWriteU8(FILE *fp, uint8_t value)
 {
@@ -96,13 +96,13 @@ ErrorCode IO_enumReadBytes(FILE *fp, void *buffer, size_t size)
 
 char* IO_charReadString(FILE *fp, uint16_t length)
 {
-    if (fp == NULL) return FILE_NOT_FOUND; 
+    if (fp == NULL) return NULL /*FILE_NOT_FOUND*/; 
     char *str = (char*)malloc(length + 1);
-    if (!str) return MEMORY_ALLOCATION_FAILED;
+    if (!str) return NULL /*MEMORY_ALLOCATION_FAILED*/;
     
     if (fread(str, 1, length, fp) != length) {
         free(str);
-        return ERROR_READ_FAILED;
+        return NULL /*ERROR_READ_FAILED*/;
     }
     
     str[length] = '\0'; // Ensure string is null-terminated
