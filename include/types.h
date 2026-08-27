@@ -1,0 +1,20 @@
+#ifndef TYPES_H
+#define TYPES_H
+
+#define MAGIC_ARCHIVE_HEADER  0x4D4D3333  /* MM33 */
+
+typedef enum
+{
+    SUCCESS = 0,
+    FAILURE,
+    ERROR_WRITE_FAILED,
+    ERROR_READ_FAILED,
+    MEMORY_ALLOCATION_FAILED,
+    FILE_NOT_FOUND,
+    BUFFER_OVERFLOW,
+    TIMEOUT,
+    NULL_POINTER,
+} ErrorCode;
+
+
+#endif /* TYPES_H */
