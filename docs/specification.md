@@ -6,24 +6,24 @@
 
 ### Layout
 
-┌─────────────────────────┐
-│       Field Data        │
-│                         │
-│   Local Field Header    │
-│   Field Data            │
-│                         │
-│   Local Field Header    │
-│   Field Data            │
-│          ...            │
-├─────────────────────────┤
-│        Directory        │
-│                         │
-│  Groups                 │
-│  Entries                │
-│  Field Headers          │
-├─────────────────────────┤
-│     Archive Footer      │
-└─────────────────────────┘
+─────────────────────────
+        Fields           
+                         
+   Local Field Header    
+   Field Data            
+                         
+   Local Field Header    
+   Field Data            
+          ...            
+─────────────────────────
+        Directory        
+                         
+  All archive info.      
+  Groups                 
+  Entries                
+  Field Headers          
+                         
+─────────────────────────
 
 #### Archive Header
 contains only magic number of 4 bytes.
@@ -68,57 +68,93 @@ Directory contains fields headers(which contain their offsets in the file) and l
 
 Groups and Entries sizes are defined in their blocks.
 
-↓
-
-#### Footer (EOD)
-This is the end of archive or (End Of Directory), It contains archive info such as file version, directory offset and archive description
-
-| Offset | Size | Name                       | Description                                       |
-| -----: | ---: | -------------------------- | ------------------------------------------------- |
-|      0 |    4 | Magic                      | ASCII `"MM33"` (`0x4D4D3333`)                     |
-|      4 |    2 | File Version               | Version of the archive format                     |
-|      6 |    4 | Directory Offset           | Absolute offset to the beginning of the directory |
-|     10 |    2 | Archive Description Length | Number of bytes in the description                |
-|     12 |    n | Archive Description        | UTF-8 encoded description                         |
-
-
-`#TODO:` move to Archive header
-
 ### Blocks structure
 
-#### Group
+## Group
 
-| Offset | Size | Name              | Description                                |
-| -----: | ---: | ----------------- | ------------------------------------------ |
-|      0 |    4 | Magic             | Magic number identifying a Group structure |
-|      4 |    2 | Group ID          | Unique identifier of the group             |
-|      6 |    2 | Group Name Length | Number of bytes in the group name          |
-|      8 |    n | Group Name        | UTF-8 encoded group name                   |
+| Offset | Size | Name                    | Description                                |
+| -----: | ---: | ----------------------- | ------------------------------------------ |
+|      0 |    4 | Magic                   | Magic number identifying a Group structure |
+|      4 |    4 | Group ID                | Unique identifier of the group             |
+|      8 |    4 | Group Creation Time     | Group creation timestamp                   |
+|     12 |    4 | Group Last Modification | Group last modification timestamp          |
+|     16 |    2 | Group Name Length       | Number of bytes in the group name          |
+|     18 |    n | Group Name              | UTF-8 encoded group name                   |
 
-#### Entry
-| Offset | Size | Name              | Description                                 |
-| -----: | ---: | ----------------- | ------------------------------------------- |
-|      0 |    4 | Magic             | Magic number identifying an Entry structure |
-|      4 |    2 | Group ID          | ID of the group containing this entry       |
-|      6 |    2 | Entry ID          | Unique identifier of the entry              |
-|      8 |    2 | Entry Name Length | Number of bytes in the entry name           |
-|     10 |    n | Entry Name        | UTF-8 encoded entry name                    |
+## Entry
 
-#### Field Directory Header
+| Offset | Size | Name                    | Description                                 |
+| -----: | ---: | ----------------------- | ------------------------------------------- |
+|      0 |    4 | Magic                   | Magic number identifying an Entry structure |
+|      4 |    4 | Group ID                | ID of the group containing this entry       |
+|      8 |    4 | Entry ID                | Unique identifier of the entry              |
+|     12 |    4 | Entry Creation Time     | Entry creation timestamp                    |
+|     16 |    4 | Entry Last Modification | Entry last modification timestamp           |
+|     20 |    2 | Entry Name Length       | Number of bytes in the entry name           |
+|     22 |    n | Entry Name              | UTF-8 encoded entry name                    |
+
+## Directory
+
+| Offset | Size | Name                       | Description                                      |
+| -----: | ---: | -------------------------- | ------------------------------------------------ |
+|      0 |    4 | Magic                      | Magic number identifying the Directory structure |
+|      4 |    2 | File Version               | Version of the archive format                    |
+|      6 |    8 | Archive Size               | Total size of the archive in bytes               |
+|     14 |    4 | Archive Creation Date      | Archive creation timestamp                       |
+|     18 |    4 | Archive Last Modification  | Archive last modification timestamp              |
+|     22 |    4 | Number of Groups           | Number of groups in the archive                  |
+|     26 |    n | Groups                     | Serialized Group structures                      |
+|      - |    4 | Number of Entries          | Number of entries in the archive                 |
+|      - |    n | Entries                    | Serialized Entry structures                      |
+|      - |    4 | Number of Fields           | Number of fields in the archive                  |
+|      - |    n | Fields                     | Serialized Field Directory Header structures     |
+|      - |    2 | Archive Name Length        | Number of bytes in the archive name              |
+|      - |    n | Archive Name               | UTF-8 encoded archive name                       |
+|      - |    2 | Archive Description Length | Number of bytes in the archive description       |
+|      - |    n | Archive Description        | UTF-8 encoded archive description                |
+
+> The offsets after `Groups` are variable because each Group has a variable-length name. Therefore, they are calculated dynamically rather than being fixed offsets.
+
+## Field Directory Header
+
 | Offset | Size | Name                    | Description                                       |
 | -----: | ---: | ----------------------- | ------------------------------------------------- |
-|      0 |    4 | Magic                   | Magic number identifying a directory Field Header |
-|      4 |    2 | Entry ID                | ID of the entry containing this field             |
-|      6 |    2 | Compression Method      | Identifier of the compression algorithm           |
-|      8 |    4 | Compressed Field Size   | Size of the compressed field data in bytes        |
-|     12 |    4 | Uncompressed Field Size | Size of the original field data in bytes          |
-|     16 |    4 | Field Offset            | Absolute offset to the local field header/data    |
-|     20 |    4 | CRC                     | CRC/hash of the field data                        |
-|     24 |    4 | Field Creation Time     | Creation timestamp                                |
-|     28 |    4 | Field Last Modification | Last modification timestamp                       |
-|     32 |    2 | Field Type              | Identifier describing the type of field           |
-|     34 |    2 | Field Name Length       | Number of bytes in the field name                 |
-|     36 |    n | Field Name              | UTF-8 encoded field name                          |
+|      0 |    4 | Magic                   | Magic number identifying a Directory Field Header |
+|      4 |    4 | Entry ID                | ID of the entry containing this field             |
+|      8 |    2 | Compression Method      | Identifier of the compression algorithm           |
+|     10 |    8 | Compressed Field Size   | Size of the compressed field data in bytes        |
+|     18 |    8 | Uncompressed Field Size | Size of the original field data in bytes          |
+|     26 |    8 | Field Offset            | Absolute offset to the Local Field Header         |
+|     34 |    4 | CRC                     | CRC/hash of the field data                        |
+|     38 |    4 | Field Creation Time     | Field creation timestamp                          |
+|     42 |    4 | Field Last Modification | Field last modification timestamp                 |
+|     46 |    2 | Field Type              | Identifier describing the type of field           |
+|     48 |    2 | Field Name Length       | Number of bytes in the field name                 |
+|     50 |    n | Field Name              | UTF-8 encoded field name                          |
+
+## Archive
+
+| Offset | Size | Name             | Description                                             |
+| -----: | ---: | ---------------- | ------------------------------------------------------- |
+|      0 |    4 | Magic            | Magic number identifying the archive                    |
+|      4 |    8 | Directory Offset | Absolute offset to the Directory structure              |
+|     12 |    n | Fields           | Serialized Local Field Header and Field Data structures |
+
+## Local Field Header
+
+| Offset | Size | Name                    | Description                                   |
+| -----: | ---: | ----------------------- | --------------------------------------------- |
+|      0 |    4 | Magic                   | Magic number identifying a Local Field Header |
+|      4 |    2 | Entry ID                | ID of the entry containing this field         |
+|      6 |    2 | Compression Method      | Identifier of the compression algorithm       |
+|      8 |    8 | Compressed Field Size   | Size of the compressed field data in bytes    |
+|     16 |    8 | Uncompressed Field Size | Size of the original field data in bytes      |
+|     24 |    4 | CRC                     | CRC/hash of the field data                    |
+|     28 |    4 | Field Creation Time     | Field creation timestamp                      |
+|     32 |    4 | Field Last Modification | Field last modification timestamp             |
+|     36 |    2 | Field Type              | Identifier describing the type of field       |
+|     38 |    2 | Field Name Length       | Number of bytes in the field name             |
+|     40 |    n | Field Name              | UTF-8 encoded field name                      |
 
     
 
@@ -159,5 +195,7 @@ Readers should reject versions greater than the highest version they support.
 0x0001 = Text (UTF-8)
 0x0002 = Password
 
+## Boundaries
 
-
+max archive size = 1.8447 * 10^19 byte = 1.71799 * 10^10 GiB.
+max number of groups, entries, fields =~ 4.29*10^9.
