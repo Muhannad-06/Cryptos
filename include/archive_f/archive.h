@@ -1,6 +1,9 @@
 #include "../archive_m/archive.h"
 #include <stdint.h>
 
+/* Archive current version */
+#define ARCHIVE_VERSION 0
+
 /* Sizes of file elements in Bytes. */
 #define MAGIC_SIZE 4    // size of the magic number `0x4D4D33`.
 #define FILE_VERSION_SIZE 2 // size of the file version integer.
