@@ -1,4 +1,6 @@
 #include "../../include/Bin_IO.h"
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -35,6 +37,25 @@ ErrorCode IO_enumWriteU32(FILE *fp, uint32_t value)
     if (fwrite(buffer, 1, 4, fp) != 4) {
         return ERROR_WRITE_FAILED;
     }
+    return SUCCESS;
+}
+
+ErrorCode IO_enumWriteU64(FILE *fp, uint64_t value)
+{
+    uint8_t buffer[8];
+    buffer[0] = (uint8_t)(value & 0xFF);
+    buffer[1] = (uint8_t)((value >> 8) & 0xFF);
+    buffer[2] = (uint8_t)((value >> 16) & 0xFF);
+    buffer[3] = (uint8_t)((value >> 24) & 0xFF);
+    buffer[4] = (uint8_t)((value >> 32) & 0xFF);
+    buffer[5] = (uint8_t)((value >> 40) & 0xFF);
+    buffer[6] = (uint8_t)((value >> 48) & 0xFF);
+    buffer[7] = (uint8_t)((value >> 56) & 0xFF);
+    
+    if (fwrite(buffer, 1, 8, fp) != 8) {
+        return ERROR_WRITE_FAILED;
+    }
+    
     return SUCCESS;
 }
 
@@ -85,6 +106,23 @@ ErrorCode IO_enumReadU32(FILE *fp, uint32_t *out_val)
                          (buffer[3] << 24));
     return SUCCESS;
 }
+
+ErrorCode IO_enumReadU64(FILE *fp, uint64_t *out_val)
+{
+    uint8_t buffer[8];
+    if (fread(buffer, 1, 8, fp) != 8) return ERROR_READ_FAILED;
+    
+    *out_val = (uint64_t)((uint64_t)buffer[0] | 
+                         ((uint64_t)buffer[1] << 8) | 
+                         ((uint64_t)buffer[2] << 16) | 
+                         ((uint64_t)buffer[3] << 24) | 
+                         ((uint64_t)buffer[4] << 32) | 
+                         ((uint64_t)buffer[5] << 40) | 
+                         ((uint64_t)buffer[6] << 48) | 
+                         ((uint64_t)buffer[7] << 56));
+    return SUCCESS;
+}
+
 
 ErrorCode IO_enumReadBytes(FILE *fp, void *buffer, size_t size)
 {
