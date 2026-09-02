@@ -14,6 +14,12 @@
 #define CRC_SIZE 4   // size of CRC
 #define TYPE_SIZE 2 // size of (field type, compression type, etc...)
 
+/* Boundaries */
+#define MAX_CHANGES 4294967296 // maximum number of archive directories, for each change in archive a new directory is written.
+
+/* Magic Number */
+#define MAGIC_NUMBER  0x4D4D3333  /* MM33 */
+
 /* functions to calculate size of parts that have variable length */
 uint64_t group_header_size (Group * group);
 uint64_t entry_header_size(Entry * entry);
