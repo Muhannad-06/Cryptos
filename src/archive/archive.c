@@ -30,6 +30,11 @@ Archive * archive_create(char *name, char *description){
 
 /* archive format functions */
 
+<<<<<<< Updated upstream
+=======
+/* dynamic size calculation functions */
+
+>>>>>>> Stashed changes
 uint64_t group_header_size(Group *group){
     return MAGIC_SIZE +
         ID_SIZE +
@@ -96,4 +101,19 @@ uint64_t directory_size(Archive *archive){
         group_headers_size +
         entry_headers_size +
         field_headers_size;
+<<<<<<< Updated upstream
+=======
+}
+
+/* writing functions */
+
+ErrorCode write_group_header(Group * group){
+    /* check if file is open and appendable. */
+    if(group->archive->fp == NULL){
+        error();
+    }
+        /*write magic number. */
+    if()
+
+>>>>>>> Stashed changes
 }

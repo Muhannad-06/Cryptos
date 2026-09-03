@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "../types.h"
 #include "../utils/vector.h"
 #include "group.h"
 #include "entry.h"
@@ -60,9 +61,19 @@ typedef struct Archive{
 
 } Archive;
 
-/* #TODO: Functions*/
+/* #TODO: Memory Functions*/
 
 Archive * archive_create(char *name, char *description);
 void archive_destroy(Archive * archive);
+
+/* #TODO: Format functions */
+ErrorCode write_group_header(Group * group); /* write group directory header. */
+ErrorCode write_entry_header(Entry * entry); /* write entry directory header. */
+ErrorCode write_field_header(Field * field); /* write field directory header. */
+ErrorCode write_directory(Archive * archive);
+ErrorCode write_field_local_header(Archive * archive, Field * field); /* write field local header. */
+ErrorCode write_field(Archive * archive, Field * field); /* write both local header & field content */
+ErrorCode write_archive(Archive * archive); /* create or update archive content. */
+ErrorCode write_archive_clean(Archive * archive, char *new_file_name); /* rewrite archive with clean history. */
 
 #endif

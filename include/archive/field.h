@@ -18,6 +18,7 @@ typedef struct Field{
     uint32_t creation_date;
     uint32_t last_modification_date;
     uint32_t number_of_changes; // number of updates to the field.
+    void * content; // should either string or file pointer.
     uint16_t type; // #TODO: use enum.
     uint16_t compression;
 
