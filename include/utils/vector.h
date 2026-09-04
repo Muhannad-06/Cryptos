@@ -12,10 +12,11 @@ typedef struct Vector{
 } Vector;
 
 Vector * vector_create();
+Vector *vector_copy(Vector *src);
 void * vector_push_back(Vector * vector, void * value);
 void * vector_pop_back(Vector * vector);
 void * vector_at(Vector * vector, size_t index);
-void * vector_remove_value(Vector *vector, void * value); /* loops through all vector elements and assign indices with specified value to NULL */
+void * vector_remove_value(Vector *vector, void * value); /* clean the vector from specified data. */
 void vector_destroy(Vector *vector);
 
 #endif

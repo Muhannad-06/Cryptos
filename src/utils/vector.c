@@ -11,6 +11,29 @@ Vector * vector_create(){
     return vector;
 }
 
+Vector *vector_copy(Vector *src){
+    if (!src) return NULL;
+    Vector *copy = vector_create();    
+    copy->capacity = src->capacity;
+    // deep copy for the data array.
+    if(copy->capacity > 0){
+        copy->data = malloc((copy->capacity) * sizeof(void *));
+        
+        void **sp = src->data;
+        void **np = copy->data;
+        for(int i = 0; i<src->size ; i++){
+            if(*sp == NULL){
+                sp++;
+                continue;
+            }
+            *np++ = *sp++;
+            copy->size++;
+        }
+    }
+    
+    return copy;
+}
+
 void * vector_push_back(Vector * vector, void * value){
     if(vector->data == NULL){
         vector->data = malloc(sizeof(void *));
@@ -54,20 +77,32 @@ void * vector_at(Vector * vector, size_t index){
 }
 
 void * vector_remove_value(Vector *vector, void * value){
-    /* #TODO: Change implementation to make new vector to avoid errors of accessing null pointers */
+    if (!vector || vector->capacity == 0) return NULL;
+    /* create a new data array. */ 
+    void **newData = malloc(vector->capacity * sizeof(void *));
+
+
+    void **np = newData;
     int c = 0;
     for (int i = 0; i < (int) vector->size ; i++) {
         if(vector->data[i] == value){
             c++;
-            vector->data[i] = NULL;
+            // vector->data[i] = NULL;
+            continue;
         }
+        *np++ = vector->data[i];
     }
+    
+   if(c <= 0){
+    free(newData);
+    return NULL;
+   }
 
-    if(c > 0){
-        return value;
-    } else {
-        return NULL; // nothing was deleted.
-    }
+   free(vector->data);
+   vector->size -= c;
+   vector->data = newData;
+
+    return value;
 }
 
 void vector_destroy(Vector *vector){
