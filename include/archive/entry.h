@@ -11,7 +11,7 @@ typedef struct Entry{
     uint32_t creation_date;
     uint32_t last_modification_date;
     Group * group;
-    uint16_t entry_id;
+    uint32_t entry_id;
     char* name;
 
     Vector *fields;

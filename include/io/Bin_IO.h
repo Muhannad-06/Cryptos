@@ -16,16 +16,12 @@
 *   Mechanism: Division of data into bytes, writing to file, and checking for write success.          
 */
 ErrorCode IO_enumWriteU8(FILE *fp, uint8_t value);
-
 ErrorCode IO_enumWriteU16(FILE *fp, uint16_t value);
-
 ErrorCode IO_enumWriteU32(FILE *fp, uint32_t value);
-
 ErrorCode IO_enumWriteBytes(FILE *fp, const void *buffer, size_t size);
-
 ErrorCode IO_enumWriteU64(FILE *fp, uint64_t value);
-
 ErrorCode IO_enumWriteString(FILE *fp, const char *str);
+ErrorCode IO_enumWriteFile(FILE *dst, FILE *src); // #TODO @Muhannad.
 
 /*============================================================================================================*/
 
@@ -46,6 +42,8 @@ ErrorCode IO_enumReadU32(FILE *fp, uint32_t *out_val);
 ErrorCode IO_enumReadU64(FILE *fp, uint64_t *out_val);
 ErrorCode IO_enumReadBytes(FILE *fp, void *buffer, size_t size);
 ErrorCode IO_charReadString(FILE *fp, uint16_t length, char **out_str);
+ErrorCode IO_enumPrintFile(FILE *dst, uint64_t offset, uint64_t size, FILE *src); // #TODO @Muhannad.
+                                                                                  // Print a file (from archive field) to another stream.
 
 /*============================================================================================================*/
 

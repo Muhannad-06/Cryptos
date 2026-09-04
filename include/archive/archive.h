@@ -36,6 +36,9 @@ uint64_t field_header_size(Field * field);
 uint64_t local_field_header_size(Field * field);
 uint64_t field_size(Field * field);
 uint64_t directory_size(Archive * archive);
+
+/* #TODO: archive size calculation */
+uint64_t archive_calculate_size(Archive * archive);
     
 
 typedef struct Archive{
@@ -48,9 +51,11 @@ typedef struct Archive{
     Vector *entries;
     Vector *fields;
     /* vectors to collect entities that have changes to be written. */
-    Vector *groups_updated;
+    // Vector *groups_updated;
     // Vector *entries_updated;/* groups & entries are not necessary as there info would be written in the directory in each change. */
-    // Vector *fields_updated;
+    uint32_t creation_date;
+    uint32_t last_modification_date;
+    Vector *fields_updated;
     uint32_t num_of_changes; /* represents number of directories in the archive */
     char* name;
     char* description;
@@ -66,13 +71,15 @@ typedef struct Archive{
 Archive * archive_create(char *name, char *description);
 void archive_destroy(Archive * archive);
 
+/* #TODO: add, update, delete operations */
+
 /* #TODO: Format functions */
 ErrorCode write_group_header(Group * group); /* write group directory header. */
 ErrorCode write_entry_header(Entry * entry); /* write entry directory header. */
 ErrorCode write_field_header(Field * field); /* write field directory header. */
 ErrorCode write_directory(Archive * archive);
-ErrorCode write_field_local_header(Archive * archive, Field * field); /* write field local header. */
-ErrorCode write_field(Archive * archive, Field * field); /* write both local header & field content */
+ErrorCode write_field_local_header(Field * field); /* write field local header. */
+ErrorCode write_field(Field * field); /* write both local header & field content */
 ErrorCode write_archive(Archive * archive); /* create or update archive content. */
 ErrorCode write_archive_clean(Archive * archive, char *new_file_name); /* rewrite archive with clean history. */
 

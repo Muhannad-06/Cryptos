@@ -32,3 +32,9 @@ void field_destroy(Field *field) {
     free(field->name);
     free(field);
 }
+
+/* calculate crc */
+uint32_t field_crc(Field *field){
+    // #TODO
+    return 0;
+}

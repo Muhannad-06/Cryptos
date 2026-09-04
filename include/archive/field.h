@@ -8,6 +8,19 @@ typedef struct Entry Entry;
 typedef struct Archive Archive;
 typedef struct Group Group;
 
+typedef enum : uint16_t
+{
+    TEXT = 0,
+    PASSWORD = 1,
+    BINARY = 2, // file
+} FieldType;
+
+typedef enum : uint16_t
+{
+    NON_COMPRESSED = 0,
+    DEFLATE = 1,
+} CompressionType;
+
 typedef struct Field{
     Entry * entry;
 
@@ -19,8 +32,8 @@ typedef struct Field{
     uint32_t last_modification_date;
     uint32_t number_of_changes; // number of updates to the field.
     void * content; // should either string or file pointer.
-    uint16_t type; // #TODO: use enum.
-    uint16_t compression;
+    FieldType type; //
+    CompressionType compression;
 
     char* name;
 } Field ;
@@ -29,5 +42,6 @@ typedef struct Field{
 
 Field * field_create(Entry *entry,uint64_t offset ,uint16_t type, char* name);
 void field_destroy(Field *field);
+uint32_t field_crc(Field *field);
 
 #endif
