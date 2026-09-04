@@ -1,7 +1,6 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#define MAGIC_ARCHIVE_HEADER  0x4D4D3333  /* MM33 */
 
 typedef enum
 {

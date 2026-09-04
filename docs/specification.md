@@ -35,36 +35,9 @@ A field consists of
     1- field local header 
     2- field data.
 
-##### Local file header
-
-| Offset | Size | Name                    | Description                                   |
-| -----: | ---: | ----------------------- | --------------------------------------------- |
-|      0 |    4 | Magic                   | Magic number identifying a local Field Header |
-|      4 |    2 | Entry ID                | ID of the entry containing this field         |
-|      6 |    2 | Compression Method      | Identifier of the compression algorithm       |
-|      8 |    4 | Compressed Field Size   | Size of the compressed field data in bytes    |
-|     12 |    4 | Uncompressed Field Size | Size of the original field data in bytes      |
-|     16 |    4 | CRC                     | CRC/hash of the field data                    |
-|     20 |    4 | Field Creation Time     | Creation timestamp                            |
-|     24 |    4 | Field Last Modification | Last modification timestamp                   |
-|     28 |    2 | Field Type              | Identifier describing the type of field       |
-|     30 |    2 | Field Name Length       | Number of bytes in the field name             |
-|     32 |    n | Field Name              | UTF-8 encoded field name                      |
-
-↓
 
 #### Directory
 Directory contains fields headers(which contain their offsets in the file) and logical hierarchy (Groups and Entries) information.
-
-| Offset | Size | Name              | Description                            |
-| -----: | ---: | ----------------- | -------------------------------------- |
-|      0 |    4 | Magic             | Magic number identifying the Directory |
-|      4 |    2 | Number of Groups  | Number of groups in the directory      |
-|      6 |    ? | Groups            | Group information                      |
-|      ? |    2 | Number of Entries | Number of entries in the directory     |
-|      ? |    ? | Entries           | Entry information                      |
-|      ? |    2 | Number of Fields  | Number of fields in the directory      |
-|      ? |    n | Field Headers     | Directory field headers                |
 
 Groups and Entries sizes are defined in their blocks.
 
@@ -95,25 +68,25 @@ Groups and Entries sizes are defined in their blocks.
 
 ## Directory
 
-| Offset | Size | Name                       | Description                                      |
-| -----: | ---: | -------------------------- | ------------------------------------------------ |
-|      0 |    4 | Magic                      | Magic number identifying the Directory structure |
-|      4 |    2 | File Version               | Version of the archive format                    |
-|      6 |    8 | Archive Size               | Total size of the archive in bytes               |
-|     14 |    4 | Archive Creation Date      | Archive creation timestamp                       |
-|     18 |    4 | Archive Last Modification  | Archive last modification timestamp              |
-|     22 |    4 | Number of Groups           | Number of groups in the archive                  |
-|     26 |    n | Groups                     | Serialized Group structures                      |
-|      - |    4 | Number of Entries          | Number of entries in the archive                 |
-|      - |    n | Entries                    | Serialized Entry structures                      |
-|      - |    4 | Number of Fields           | Number of fields in the archive                  |
-|      - |    n | Fields                     | Serialized Field Directory Header structures     |
-|      - |    2 | Archive Name Length        | Number of bytes in the archive name              |
-|      - |    n | Archive Name               | UTF-8 encoded archive name                       |
-|      - |    2 | Archive Description Length | Number of bytes in the archive description       |
-|      - |    n | Archive Description        | UTF-8 encoded archive description                |
-
-> The offsets after `Groups` are variable because each Group has a variable-length name. Therefore, they are calculated dynamically rather than being fixed offsets.
+| Offset | Size | Name | Description |
+| --- | --- | --- | --- |
+| 0 | 4 | Magic number | Magic number identifying the Directory structure |
+| 4 | 2 | File Version | Version of the archive format |
+| 6 | 8 | Archive size | Total size of the archive in bytes |
+| 14 | 4 | Archive creation date | Archive creation timestamp |
+| 18 | 4 | Archive last modification date | Archive last modification timestamp |
+| 22 | 4 | number of directories (number of changes) | Number of directories or changes tracked |
+| 26 | 8 | Offset of the previous directory | Byte offset pointing to the previous directory |
+| 34 | 4 | Number of groups | Number of groups in the archive |
+| 38 | n | Groups | Serialized Group structures |
+| - | 4 | Number of entries | Number of entries in the archive |
+| - | n | Entries | Serialized Entry structures |
+| - | 4 | Number of fields | Number of fields in the archive |
+| - | n | Fields (Directory) Headers | Serialized Field Directory Header structures |
+| - | 2 | Archive name length (m) | Number of bytes in the archive name |
+| - | m | Archive name | UTF-8 encoded archive name |
+| - | 2 | Archive description length (n) | Number of bytes in the archive description |
+| - | n | Archive description | UTF-8 encoded archive description |
 
 ## Field Directory Header
 
@@ -199,3 +172,4 @@ Readers should reject versions greater than the highest version they support.
 
 max archive size = 1.8447 * 10^19 byte = 1.71799 * 10^10 GiB.
 max number of groups, entries, fields =~ 4.29*10^9.
+max changes = 2^32
