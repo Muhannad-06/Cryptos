@@ -1,4 +1,4 @@
-#include "assertion.h"
+#include "../../include/utils/assertion.h"
 #include <stdio.h>
 
 int assertFileEqual(FILE *fp1, FILE *fp2){
@@ -12,3 +12,9 @@ int assertFileEqual(FILE *fp1, FILE *fp2){
     }
     return 1;
 }
+
+int assert(char *msg, int st){
+    if(!st){
+        fprintf(stderr, "FAIL: %s", msg);
+    }
+} 
