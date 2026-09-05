@@ -34,6 +34,7 @@ Archive * archive_create(char *name, char *description){
 
 Archive * archive_clean_history(Archive * archive){
     // #TODO
+    return NULL;
 }
 
 /* archive format functions */
