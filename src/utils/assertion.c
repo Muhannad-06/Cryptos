@@ -1,3 +1,4 @@
+#include "../../include/types.h"
 #include "../../include/utils/assertion.h"
 #include <stdio.h>
 
@@ -7,14 +8,18 @@ int assertFileEqual(FILE *fp1, FILE *fp2){
 
     while( ((c1 = fgetc(fp1)) != EOF) && ((c2 = fgetc(fp2)) != EOF) ){
         if(c1 != c2){
-            return 0;
+            return FAILURE;
         }
     }
-    return 1;
+    return SUCCESS;
 }
 
 int assert(char *msg, int st){
     if(!st){
         fprintf(stderr, "FAIL: %s", msg);
+        return FAILURE;
     }
-} 
+    
+    fprintf(stderr, "SUCSESS: %s", msg);
+    return SUCCESS;
+}
