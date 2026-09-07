@@ -397,9 +397,24 @@ Entry ** read_field_headers(Archive * archive, FILE *fp, uint64_t n_fields_offse
     return NULL;
 }
 
-Archive * read_archive(FILE *p){
+Archive * read_directory(FILE *fp, uint64_t directory_offset){
+    // seek to the directory.
+    IO_enumSeek(fp, directory_offset);
 
-    return NULL;
+    Archive * archive = archive_create("", "");
+    // # TODO parse data into archive
+    
+
+    return archive;
+}
+Archive * read_archive(FILE *fp){
+    uint64_t directory_offset;
+    // #TODO seek to end of file and read directory offset.
+    
+    // read directory
+    Archive * archive = read_directory(fp, directory_offset);
+
+    return archive;
 }
 
 void print_field_data(Field * field, FILE * stream){

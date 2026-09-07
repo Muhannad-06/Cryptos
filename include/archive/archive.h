@@ -95,7 +95,8 @@ Entry * read_entry_header(Archive * archive, FILE *fp, uint64_t offset); // seek
 Entry ** read_entry_headers(Archive * archive, FILE *fp, uint64_t n_entries_offset); // seek to number of entries section offset and start parsing groups.
 Field * read_field_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse field data.
 Entry ** read_field_headers(Archive * archive, FILE *fp, uint64_t n_fields_offset); // seek to number of fields section offset and start parsing groups.
-Archive * read_archive(FILE *p); // read directory.
+Archive * read_directory(FILE *fp, uint64_t directory_offset);
+Archive * read_archive(FILE *fp); // read directory.
 void print_field_data(Field * field, FILE * stream); // print field data into stream.
 
 #endif
