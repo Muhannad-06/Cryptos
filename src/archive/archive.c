@@ -138,7 +138,6 @@ ErrorCode write_group_header(Group * group){
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
 
-
 ErrorCode write_entry_header(Entry * entry){
     int status = SUCCESS;
     Archive *archive = entry->group->archive;
@@ -166,7 +165,6 @@ ErrorCode write_entry_header(Entry * entry){
     
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
-
 
 ErrorCode write_field_header(Field * field){
     int status = SUCCESS;

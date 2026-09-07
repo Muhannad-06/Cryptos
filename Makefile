@@ -11,7 +11,7 @@
 
 CC       := gcc
 CFLAGS   := -std=c11 -Wall -Wextra -g
-CPPFLAGS := -Iinclude -Itesting/utils
+CPPFLAGS := -Iinclude
 
 BUILD_DIR := build
 BIN_DIR   := bin
@@ -20,8 +20,7 @@ BIN_DIR   := bin
 LIB_SRCS := src/IO/Bin_IO.c
 
 # Test sources (unit tests + test helper utilities)
-TEST_SRCS := testing/IO/bin_IO_test.c \
-             testing/utils/assertion.c
+TEST_SRCS := testing/io/bin_IO_test.c
 
 SRCS := $(LIB_SRCS) $(TEST_SRCS)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))

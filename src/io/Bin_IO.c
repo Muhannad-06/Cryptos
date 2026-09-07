@@ -77,6 +77,10 @@ ErrorCode IO_enumWriteString(FILE *fp, const char *str)
     return SUCCESS;
 }
 
+ErrorCode IO_enumWriteFile(FILE *dst, FILE *src){
+    return FAILURE;
+}
+
 /* Primitive Readers (Little-Endian) */
 ErrorCode IO_enumReadU8(FILE *fp, uint8_t *out_val)
 {
@@ -163,6 +167,9 @@ ErrorCode IO_charReadString(FILE *fp, uint16_t length, char **out_str)
     return SUCCESS;
 }
 
+ErrorCode IO_enumPrintFile(FILE *dst, uint64_t offset, uint64_t size, FILE *src){
+    return FAILURE;
+}
 
 /* Navigation Helpers */
 uint64_t IO_u64Tell(FILE *fp)

@@ -16,10 +16,10 @@ int assertFileEqual(FILE *fp1, FILE *fp2){
 
 int assert(char *msg, int st){
     if(!st){
-        fprintf(stderr, "FAIL: %s", msg);
+        fprintf(stderr, "FAIL: %s\n", msg);
         return FAILURE;
     }
     
-    fprintf(stderr, "SUCSESS: %s", msg);
+    fprintf(stderr, "SUCSESS: %s\n", msg);
     return SUCCESS;
 }

@@ -38,7 +38,7 @@ uint64_t field_size(Field * field);
 uint64_t directory_size(Archive * archive);
 
 /* #TODO: archive size calculation */
-uint64_t archive_calculate_size(Archive * archive);
+uint64_t archive_size(Archive * archive);
     
 
 typedef struct Archive{
