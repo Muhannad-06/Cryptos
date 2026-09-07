@@ -26,4 +26,7 @@ typedef struct Group{
 Group * group_create(Archive *archive, char *name);
 void group_destroy(Group * group);
 
+/* brief info about group */
+char * group_to_string(Group * group);
+
 #endif

@@ -71,16 +71,31 @@ typedef struct Archive{
 Archive * archive_create(char *name, char *description);
 void archive_destroy(Archive * archive);
 
+/* brief info about archive */
+char * archive_to_string(Archive * archive);
+
 /* #TODO: add, update, delete operations */
 
-/* #TODO: Format functions */
-ErrorCode write_group_header(Group * group); /* write group directory header. */
-ErrorCode write_entry_header(Entry * entry); /* write entry directory header. */
+/*  Format functions */
+
+/*  write functions. */
+ErrorCode write_group_header(Group *group);  /* write group directory header. */
+ErrorCode write_entry_header(Entry *entry);  /* write entry directory header. */
 ErrorCode write_field_header(Field * field); /* write field directory header. */
 ErrorCode write_directory(Archive * archive);
 ErrorCode write_field_local_header(Field * field); /* write field local header. */
 ErrorCode write_field(Field * field); /* write both local header & field content */
 ErrorCode write_archive(Archive * archive); /* create or update archive content. */
 ErrorCode write_archive_clean(Archive * archive, char *new_file_name); /* rewrite archive with clean history. */
+
+/* #TODO: read functions. */
+Group * read_group_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse group data.
+Group ** read_group_headers(Archive * archive, FILE *fp, uint64_t n_groups_offset); // seek to number of groups section offset and start parsing groups.
+Entry * read_entry_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse entry data.
+Entry ** read_entry_headers(Archive * archive, FILE *fp, uint64_t n_entries_offset); // seek to number of entries section offset and start parsing groups.
+Field * read_field_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse field data.
+Entry ** read_field_headers(Archive * archive, FILE *fp, uint64_t n_fields_offset); // seek to number of fields section offset and start parsing groups.
+Archive * read_archive(FILE *p); // read directory.
+void print_field_data(Field * field, FILE * stream); // print field data into stream.
 
 #endif

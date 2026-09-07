@@ -42,6 +42,11 @@ typedef struct Field{
 
 Field * field_create(Entry *entry,uint64_t offset ,uint16_t type, char* name);
 void field_destroy(Field *field);
+
+/* brief info about field */
+char * field_to_string(Field * field);
+
+/* format functions */
 uint32_t field_crc(Field *field);
 
 #endif

@@ -24,5 +24,7 @@ typedef struct Entry{
 Entry * entry_create(Group *group, char* name);
 void entry_destroy(Entry * entry);
 
+/* brief info about entry */
+char * entry_to_string(Entry * entry);
 
 #endif

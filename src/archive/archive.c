@@ -344,3 +344,67 @@ ErrorCode write_archive_clean(Archive * archive, char *new_file_name){
     // #TODO: write new archive with clean history.
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
+
+
+/* read functions */
+
+Group * read_group_header(Archive * archive, FILE *fp, uint64_t offset){
+    Group * group = group_create(archive,  "");
+    /* #TODO: parse group data.*/
+
+    return group;
+}
+
+Group ** read_group_headers(Archive * archive, FILE *fp, uint64_t n_groups_offset){
+    /* seek to number of groups section. */
+    IO_enumSeek(fp, n_groups_offset);
+
+    uint32_t n;
+    /* #TODO: parse number of groups into n */
+
+    // groups array
+    Group ** groups = malloc(sizeof(Group *) * n);
+    
+    /* parse groups data. */
+    
+    for(int i = 0; i < n; i++){
+        Group * group = read_group_header(archive, fp, IO_u64Tell(fp));
+        groups[i] = group;
+        
+        vector_push_back(archive->groups, group);
+    }
+    
+    return groups;
+}
+
+Entry * read_entry_header(Archive * archive, FILE *fp, uint64_t offset) {
+
+    return NULL;
+}
+
+Entry ** read_entry_headers(Archive * archive, FILE *fp, uint64_t n_entries_offset){
+
+    return NULL;
+}
+
+Field * read_field_header(Archive * archive, FILE *fp, uint64_t offset){
+
+    return NULL;
+}
+
+Entry ** read_field_headers(Archive * archive, FILE *fp, uint64_t n_fields_offset){
+
+    return NULL;
+}
+
+Archive * read_archive(FILE *p){
+
+    return NULL;
+}
+
+void print_field_data(Field * field, FILE * stream){
+    FILE * fp = field->entry->group->archive->fp; // archive file.
+    // seek to field data & print it to stream.
+    IO_enumSeek(fp, field->offset + local_field_header_size(field));
+    IO_enumPrintFile(stream, IO_u64Tell(fp), field->size, fp);
+}
