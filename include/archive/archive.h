@@ -37,7 +37,7 @@ uint64_t local_field_header_size(Field * field);
 uint64_t field_full_size(Field * field);
 uint64_t directory_size(Archive * archive);
 
-/* #TODO: archive size calculation */
+/* archive size calculation */
 uint64_t archive_size(Archive * archive);
     
 
@@ -74,10 +74,10 @@ typedef struct Archive{
 Archive * archive_create(char *name, char *description);
 void archive_destroy(Archive * archive);
 
-/* #TODO brief info about archive */
+/* brief info about archive */
 char * archive_to_string(Archive * archive);
 
-/* #TODO: add, update, delete operations */
+/* add, update, delete operations */
 
 /*  Format functions */
 
@@ -109,5 +109,4 @@ Vector * archive_get_versions(Archive *archive);
 /* mutators */
 void archive_set_name(Archive *archive, char *name);
 void archive_set_description(Archive *archive, char *description);
-// #TODO
 #endif

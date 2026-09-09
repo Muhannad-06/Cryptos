@@ -18,15 +18,19 @@ typedef struct Group{
     uint32_t group_id;
     char* name;
     
-
 } Group ;
 
-/* #TODO: Functions*/
+/* Functions */
 
 Group * group_create(Archive *archive, char *name);
 void group_destroy(Group * group);
 
 /* brief info about group */
 char * group_to_string(Group * group);
+
+/* mutators */
+void group_update_parents(Group *group);
+void group_set_name(Group *group, char *name);
+void group_delete(Group *group);
 
 #endif

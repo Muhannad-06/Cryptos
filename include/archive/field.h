@@ -21,6 +21,12 @@ typedef enum : uint16_t
     DEFLATE = 1,
 } CompressionType;
 
+// typedef enum : uint16_t
+// {
+//     NON_ENCRYPTED = 0,
+//     ENCRYPTED = 1,
+// } EncryptionType;
+
 typedef struct Field{
     Entry * entry;
 
@@ -38,7 +44,7 @@ typedef struct Field{
     char* name;
 } Field ;
 
-/* #TODO: functions */
+/* functions */
 
 Field * field_create(Entry *entry,uint64_t offset ,uint16_t type, char* name);
 void field_destroy(Field *field);
@@ -50,3 +56,21 @@ char * field_to_string(Field * field);
 uint32_t field_crc(Field *field);
 
 #endif
+
+/* mutators 
+don't forget to change last modification for everything in hierachy.*/
+void field_update_parents(Field * field);
+void field_set_name(Field *field, char * name);
+void field_set_content(Field *field, FieldType type, void * data);
+void field_set_compression(Field *field, CompressionType compression_type);
+// void field_set_encryption(Field *field, EncryptionType encryption_type);
+void field_set_entry(Field *field, Entry *new_entry);
+// void field_set_group(Field *field, Group *new_group);  // changing entry is enough.
+void field_delete(Field *field);
+
+/* #TODO: add encryption type section to:
+* Archive structure.
+* field struct.
+* size functions.
+* write & read functions.
+*/

@@ -40,10 +40,19 @@ Archive * archive_create(char *name, char *description){
 
 Archive * archive_clean_history(Archive * archive){
     if(!archive){
+        errorp("archive_clean_history: null pointer");
         return NULL;
     }
-    // #TODO
-    return NULL;
+    
+    char * new_file_name = strcat(archive->name, "_clean");
+    
+    if(write_archive_clean(archive, new_file_name) ==FAILURE){
+        errorp("archive_clean_history: couldn't write new archive.");
+        return NULL;
+    }
+    
+    archive->fp = fopen(new_file_name, "wb+");
+    return archive;
 }
 
 

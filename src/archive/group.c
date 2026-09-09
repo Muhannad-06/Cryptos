@@ -39,3 +39,32 @@ void group_destroy(Group *group){
     free(group->name);
     free(group);
 }
+
+/* mutators */
+
+void group_update_parents(Group *group){
+    group->archive->last_modification_date = group->last_modification_date;
+    group->archive->written = 0;
+}
+
+void group_set_name(Group *group, char *name){
+    group->last_modification_date = (uint32_t) time(NULL);
+    group->name = name;
+    
+    group_update_parents(group);
+}
+
+void group_delete(Group *group){
+    // remove from archive
+    group->archive->num_of_groups--;
+    vector_remove_value(group->archive->groups, group);
+    
+    // delete it's entries.
+    for (int i=0; i<group->entries->size; i++) {
+        entry_delete(vector_at(group->entries, i));
+    }
+
+    group->last_modification_date = (uint32_t) time(NULL);
+    group_update_parents(group);
+    group_destroy(group);
+}
