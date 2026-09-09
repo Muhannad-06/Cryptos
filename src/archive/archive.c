@@ -553,7 +553,20 @@ ErrorCode write_archive_clean(Archive * archive, char *new_file_name){
         return NULL_POINTER;
     }
     int status = SUCCESS;
-    // #TODO: write new archive with clean history.
+    // write new archive with clean history.
+    FILE *old_fp = archive->fp;
+    FILE *new_fp = fopen(new_file_name, "wb+");
+    if(!new_fp){
+        errorp("write_archive_clean: couldn't open new file");
+        return FAILURE;
+    }
+    archive->fp = new_fp;
+
+    status += write_archive(archive);
+    
+    fclose(new_fp);
+    archive->fp = old_fp;
+    
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
 
