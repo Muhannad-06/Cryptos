@@ -2,10 +2,13 @@
 #include "../../include/io/Bin_IO.h"
 #include "../../include/utils/error.h"
 #include "../../include/utils/crc.h"
+#include "../../include/utils/bst.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 /* memory functions. */
 Archive * archive_create(char *name, char *description){
@@ -29,19 +32,167 @@ Archive * archive_create(char *name, char *description){
     /* archive size = archive header + directory size*/
     archive->size = MAGIC_SIZE + OFFSET_SIZE + directory_size(archive) ; 
     
+    /* initialize num of changes. */
+    archive->num_of_changes = 1;
+    
     return archive;
 }
 
 Archive * archive_clean_history(Archive * archive){
+    if(!archive){
+        return NULL;
+    }
     // #TODO
     return NULL;
 }
 
+
+/* mutators */
+void archive_set_name(Archive *archive, char *name){
+    if(!archive){
+        error("archive_set_name: null pointer.");
+    }
+    archive->name = name;
+    
+    archive->written = 0;
+}
+
+void archive_set_description(Archive *archive, char *description){
+    if(!archive){
+        error("archive_set_description: null pointer.");
+    }
+    archive->description = description;
+    
+    archive->written = 0;
+}
+
+char *archive_to_string(Archive *archive){
+    return strcat(strcat(archive->name, ", description: "), archive->description);
+    // #TODO: return a better format.
+}
+
 /* archive format functions */
+
+/* Archive history functions */
+
+Archive * archive_get_backward(Archive * archive, uint32_t steps){
+    if(!archive){
+        return NULL;
+    }
+
+    for(uint32_t i = 0; i < steps; i++){
+        archive = read_directory(archive->fp, archive->prev_dir_offset);
+        if(!archive){
+            errorp("archive_get_backward: couldn't get backward version by %u steps", steps);
+            return NULL;
+        }
+    }
+
+    return archive;
+}
+
+Vector * archive_get_versions(Archive *archive){
+    if(!archive){
+        error("archive_get_versions: null pointer");
+        // return NULL;
+    }
+    if(archive->num_of_changes == 0){
+        error("archive_get_versions: archive has no versions.");
+    }
+    // all archive versions.
+    uint32_t num_of_changes = archive->num_of_changes;
+    Archive ** archive_versions = calloc((size_t)num_of_changes, sizeof(Archive *));
+    if(!archive_versions){
+        error("archive_get_versions: allocation for archive_versions failed.");
+    }
+
+    int c = archive->num_of_changes;
+    while(c-->0){
+        archive_versions[c] = archive;
+        if(c > 0){
+            archive = archive_get_backward(archive, 1);
+            if(!archive){
+                free(archive_versions);
+                error("archive_get_versions: got null pointer in version %d", c);
+            }
+        }
+    }
+    
+    Vector * vector = vector_create();
+    if(!vector){
+        error("versions vector creation failed.");
+    }
+
+    vector->size = num_of_changes;        
+    vector->capacity = vector->size;
+    vector->data = (void **) archive_versions;
+    
+    return vector;
+}
 
 /* dynamic size calculation functions */
 
+uint64_t archive_size(Archive *archive){
+    if(!archive){
+        error("archive_size: null pointer.");
+    }
+
+    Vector * versions = archive_get_versions(archive);
+    // calculate directories sizes over archive history.
+    uint64_t directories_size = 0;
+    // calculate field sizes (including local header.).
+    uint64_t fields_size = 0;
+    BST * all_fields = bst_create();
+    if(!all_fields){
+        error("archive_size: couldn't create all fields BST.");
+    }
+
+    for(uint32_t i = 0; i<versions->size; i++){
+        Archive *curr_archive = vector_at(versions, i);
+        // add directory size
+        directories_size += directory_size(curr_archive);
+
+        Vector *curr_fields = curr_archive->fields;
+        for(uint32_t j = 0; j<curr_fields->size; j++){
+            Field *curr_field = vector_at(curr_fields, j);
+
+            TNode *curr_field_node = bst_find(curr_field->name);
+            if(curr_field_node != NULL){ 
+                if(!curr_field_node->entity){
+                    error("archive size: bst node with null pointer entity.");
+                }
+
+                Field *curr_field_counted = (Field *) curr_field_node->entity;
+
+                if(curr_field->last_modification_date == curr_field_counted->last_modification_date){
+                    continue;
+                } else{
+                    // field_destroy(curr_field_counted); // already freed in archvie_destroy.
+                    curr_field_node->entity = curr_field;
+                    fields_size += field_full_size(curr_field);
+                    continue;
+                }
+
+            } else {
+                fields_size += field_full_size(curr_field);
+                bst_insert(curr_field->name, curr_field, NAME, FIELD);
+            }
+            
+        }
+        archive_destroy(curr_archive);
+    }
+    
+    vector_destroy(versions);
+    bst_destroy(all_fields);
+    
+    return fields_size +
+        directories_size;
+}
+
 uint64_t group_header_size(Group *group){
+    if(!group){
+        error("group_header_size: null pointer.");
+    }
     return MAGIC_SIZE +
         ID_SIZE +
         DATE_SIZE*2 +
@@ -50,6 +201,9 @@ uint64_t group_header_size(Group *group){
 }
 
 uint64_t entry_header_size(Entry *entry){
+    if(!entry){
+        error("entry_header_size: null pointer.");
+    }
     return MAGIC_SIZE+
         ID_SIZE*2 +
         DATE_SIZE*2 +
@@ -58,6 +212,9 @@ uint64_t entry_header_size(Entry *entry){
 }
 
 uint64_t field_header_size(Field *field){
+    if(!field){
+        error("field_header_size: null pointer.");
+    }
     return MAGIC_SIZE +
         ID_SIZE +
         TYPE_SIZE*2 +
@@ -69,6 +226,9 @@ uint64_t field_header_size(Field *field){
 }
 
 uint64_t local_field_header_size(Field *field){
+    if(!field){
+        error("local_field_size: null pointer.");
+    }
     return MAGIC_SIZE +
         ID_SIZE +
         TYPE_SIZE*2 +
@@ -79,7 +239,17 @@ uint64_t local_field_header_size(Field *field){
         (uint64_t) sizeof(field->name);
 }
 
+uint64_t field_full_size(Field *field){
+    if(!field){
+        error("field_full_size: null pointer.");
+    }
+    return field->size + local_field_header_size(field);
+}
+
 uint64_t directory_size(Archive *archive){
+    if(!archive){
+        error("directory_size: null pointer");
+    }
     uint64_t group_headers_size= 0;
     uint64_t entry_headers_size= 0;
     uint64_t field_headers_size= 0;
@@ -106,12 +276,17 @@ uint64_t directory_size(Archive *archive){
         (uint64_t) sizeof(archive->description) +
         group_headers_size +
         entry_headers_size +
-        field_headers_size;
+        field_headers_size +
+        OFFSET_SIZE/* directory offset is added at the end of the directory. */;
 }
 
 /* writing functions */
 
 ErrorCode write_group_header(Group * group){
+    if(!group){
+        errorp("write_group_header: null pointer.");
+        return NULL_POINTER;
+    }
     int status = SUCCESS;
     Archive *archive = group->archive;
     FILE *fp = archive->fp;
@@ -139,6 +314,10 @@ ErrorCode write_group_header(Group * group){
 }
 
 ErrorCode write_entry_header(Entry * entry){
+    if(!entry){
+        errorp("write_entry_header: null pointer.");
+        return NULL_POINTER;
+    }
     int status = SUCCESS;
     Archive *archive = entry->group->archive;
     FILE *fp = archive->fp;
@@ -167,6 +346,10 @@ ErrorCode write_entry_header(Entry * entry){
 }
 
 ErrorCode write_field_header(Field * field){
+    if(!field){
+        errorp("write_field_header: null pointer.");
+        return NULL_POINTER;
+    }
     int status = SUCCESS;
     Archive *archive = field->entry->group->archive;
     FILE *fp = archive->fp;
@@ -200,6 +383,10 @@ ErrorCode write_field_header(Field * field){
 }
 
 ErrorCode write_directory(Archive *archive){
+    if(!archive){
+        errorp("write_directory: null pointer.");
+        return NULL_POINTER;
+    }
 
     if(archive->written){
         error("File already updated.");
@@ -269,6 +456,10 @@ ErrorCode write_directory(Archive *archive){
 }
 
 ErrorCode write_field_local_header(Field * field){
+    if(!field){
+        errorp("write_field_local_header: null pointer.");
+        return NULL_POINTER;
+    }
     int status = SUCCESS;
     Archive *archive = field->entry->group->archive;
     FILE *fp = archive->fp;
@@ -301,6 +492,10 @@ ErrorCode write_field_local_header(Field * field){
 }
 
 ErrorCode write_field(Field * field){ // #TODO: pass the archive pointer directly.
+    if(!field){
+        errorp("write_field: null pointer.");
+        return NULL_POINTER;
+    }
     // #TODO pass the archive pointer to the write header functions
     Archive *archive = field->entry->group->archive;
     FILE *fp = archive->fp;
@@ -326,6 +521,11 @@ ErrorCode write_field(Field * field){ // #TODO: pass the archive pointer directl
 }
 
 ErrorCode write_archive(Archive *archive){
+    if(!archive){
+        errorp("write_archive: null pointer.");
+        return NULL_POINTER;
+    }
+    archive->num_of_changes++;
     int status = SUCCESS;
     // iterate through all updated fields and write them.
     // copy vector (as the main vector alters during the process).
@@ -336,6 +536,8 @@ ErrorCode write_archive(Archive *archive){
     vector_destroy(&fields_to_write);
     // write directory.
     status += write_directory(archive);
+    
+    archive->written = 1;
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
 

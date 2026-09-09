@@ -34,7 +34,7 @@ uint64_t group_header_size (Group * group);
 uint64_t entry_header_size(Entry * entry);
 uint64_t field_header_size(Field * field);
 uint64_t local_field_header_size(Field * field);
-uint64_t field_size(Field * field);
+uint64_t field_full_size(Field * field);
 uint64_t directory_size(Archive * archive);
 
 /* #TODO: archive size calculation */
@@ -57,6 +57,9 @@ typedef struct Archive{
     uint32_t last_modification_date;
     Vector *fields_updated;
     uint32_t num_of_changes; /* represents number of directories in the archive */
+    /* #NOTE: num_of_changes should be increased before each archive write operation. 
+    * It is increased in the write_archive function.
+    */
     char* name;
     char* description;
     uint16_t version;
@@ -66,12 +69,12 @@ typedef struct Archive{
 
 } Archive;
 
-/* #TODO: Memory Functions*/
+/* Memory Functions*/
 
 Archive * archive_create(char *name, char *description);
 void archive_destroy(Archive * archive);
 
-/* brief info about archive */
+/* #TODO brief info about archive */
 char * archive_to_string(Archive * archive);
 
 /* #TODO: add, update, delete operations */
@@ -99,4 +102,12 @@ Archive * read_directory(FILE *fp, uint64_t directory_offset);
 Archive * read_archive(FILE *fp); // read directory.
 void print_field_data(Field * field, FILE * stream); // print field data into stream.
 
+/* History functions. */
+Archive * archive_get_backward(Archive * archive, uint32_t steps);
+Vector * archive_get_versions(Archive *archive);
+
+/* mutators */
+void archive_set_name(Archive *archive, char *name);
+void archive_set_description(Archive *archive, char *description);
+// #TODO
 #endif
