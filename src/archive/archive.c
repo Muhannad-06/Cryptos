@@ -170,16 +170,22 @@ uint64_t archive_size(Archive *archive){
                     // field_destroy(curr_field_counted); // already freed in archvie_destroy.
                     curr_field_node->entity = curr_field;
                     fields_size += field_full_size(curr_field);
-                    continue;
                 }
 
             } else {
                 fields_size += field_full_size(curr_field);
                 bst_insert(curr_field->name, curr_field, NAME, FIELD);
             }
-            
         }
-        archive_destroy(curr_archive);
+    }
+
+    // clean old versions structs.
+    for(uint32_t i = 0; i < versions->size; i++){
+        Archive *curr_archive = vector_at(versions, i);
+        // Protect the active archive from destruction
+        if(curr_archive != archive){
+            archive_destroy(curr_archive);
+        }
     }
     
     vector_destroy(versions);
@@ -542,6 +548,10 @@ ErrorCode write_archive(Archive *archive){
 }
 
 ErrorCode write_archive_clean(Archive * archive, char *new_file_name){
+    if (!archive) {
+        errorp("write_archive_clean: null pointer");
+        return NULL_POINTER;
+    }
     int status = SUCCESS;
     // #TODO: write new archive with clean history.
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
