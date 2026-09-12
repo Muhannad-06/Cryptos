@@ -11,12 +11,12 @@
 #include <sys/types.h>
 
 /* memory functions. */
-Archive * archive_create(char *name, char *description){
+Archive * archive_create(char *name, char *description, FILE *fp){
     Archive * archive = malloc(sizeof(Archive));
     if(!archive) return NULL;
     
-    archive->directory_offset = sizeof(uint32_t) + sizeof(uint64_t); /* magic 4 bytes + the offset location section */
-    archive->fp = malloc(sizeof(FILE)); // creating file pointer, opening the file and writing data is in archive_f
+    archive->directory_offset = 0; // initially 0 until it's written.
+    archive->fp = fp;
     archive->groups = vector_create();
     archive->entries = vector_create();
     archive->fields = vector_create();
@@ -25,15 +25,12 @@ Archive * archive_create(char *name, char *description){
     archive->version = ARCHIVE_VERSION /* current project version */ ; 
     archive->num_of_entries = 0;
     archive->num_of_groups = 0; 
-    
-    /* Creating the default group (root) */
-    Group * root_group = group_create(archive, "root"); // increases num_of_groups by 1.
 
-    /* archive size = archive header + directory size*/
-    archive->size = MAGIC_SIZE + OFFSET_SIZE + directory_size(archive) ; 
+    /* archive size is initially 0 until the archive is written. */
+    archive->size = 0; 
     
     /* initialize num of changes. */
-    archive->num_of_changes = 1;
+    archive->num_of_changes = 0; // initially 0 until it's written.
     
     return archive;
 }
@@ -76,7 +73,15 @@ void archive_set_description(Archive *archive, char *description){
 }
 
 char *archive_to_string(Archive *archive){
-    return strcat(strcat(archive->name, ", description: "), archive->description);
+    char * string;
+    asprintf(&string,
+         "Archive \"%s\". version: %u. description: %s \n size: %u. number of groups: %u. number of entries: %u. number of fields: %u. \n number of changes: %u, is written: %u",
+        archive->name, archive->version, archive->description, (unsigned int) archive->size, archive->num_of_groups, archive->num_of_entries, (unsigned int) archive->fields->size, archive->num_of_changes, archive->written);
+    if(!string){
+        error("archive_to_string: failed.");
+    }
+    // return strcat(strcat(archive->name, ", description: "), archive->description);
+    return string;
     // #TODO: return a better format.
 }
 
@@ -141,6 +146,7 @@ Vector * archive_get_versions(Archive *archive){
 
 /* dynamic size calculation functions */
 
+/* calculated total archive size in write functions instead... */
 uint64_t archive_size(Archive *archive){
     if(!archive){
         error("archive_size: null pointer.");
@@ -307,13 +313,13 @@ ErrorCode write_group_header(Group * group){
     FILE *fp = archive->fp;
     /* check if file is open and appendable. */
     if(fp == NULL){
-        error("could not write group header for group: %s. file not open.", group->name);
+        error("write_group_header: could not write group header for group: %s. file not open.", group->name);
         return FAILURE;
     }
 
         /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp, group->archive->size) != IO_enumWriteU32(group->archive->fp, MAGIC_NUMBER) != SUCCESS){
-        error("could not write group header for group: %s. could not append to file.", group->name);
+    if(IO_enumSeek(fp, 0, SEEK_END) != IO_enumWriteU32(group->archive->fp, MAGIC_NUMBER) != SUCCESS){
+        error("write_group_header: could not write group header for group: %s. could not append to file.", group->name);
         return FAILURE;
     }
     
@@ -343,7 +349,7 @@ ErrorCode write_entry_header(Entry * entry){
     }
 
         /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp,archive->size) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+    if(IO_enumSeek(fp, 0, SEEK_SET) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
         error("could not write entry header for entry: %s. could not append to file.", entry->name);
         return FAILURE;
     }
@@ -375,7 +381,7 @@ ErrorCode write_field_header(Field * field){
     }
 
         /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp,archive->size) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+    if(IO_enumSeek(fp, 0 , SEEK_END) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
         error("could not write field header for field: %s. could not append to file.", field->name);
         return FAILURE;
     }
@@ -404,7 +410,7 @@ ErrorCode write_directory(Archive *archive){
     }
 
     if(archive->written){
-        error("File already updated.");
+        errorp("File already updated.");
         return FAILURE; 
     }
 
@@ -416,26 +422,31 @@ ErrorCode write_directory(Archive *archive){
         return FAILURE;
     }
 
+    uint64_t init_pos = IO_u64Tell(fp);
         /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp,archive->size) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+    if(IO_enumSeek(fp, 0 , SEEK_END) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
         error("could not write file directory: %s. could not append to file.", archive->name);
         return FAILURE;
     }
     
-    // /* updating archive size. */
-    // archive->size = archive_calculate_size(archive);
-    /* size updating should be handled before writing!!! */
+    /* fields that should be updated before writing directory. 
+    * - archive size. -> in write_field, write_field_local_header.
+    * - archvie num of changes. -> in write_archive.
+    */
 
     /* writing directory header. */
     status += IO_enumWriteU16(fp, archive->version);
-    status += IO_enumWriteU64(fp, archive->size); // new size is calculated before writing... 
+    /* save the size offset to correct it later. */
+    uint64_t size_offset = IO_u64Tell(fp);
+    status += IO_enumWriteU64(fp, 0); // place hold. 
     status += IO_enumWriteU32(fp, archive->creation_date);
     status += IO_enumWriteU32(fp, archive->last_modification_date);
     status += IO_enumWriteU32(fp, archive->num_of_changes);
     /* updating directory offset. */
     status += IO_enumWriteU32(fp, archive->directory_offset);
     archive->prev_dir_offset = archive->directory_offset;
-    archive->directory_offset = archive->size + 1;
+    // archive->directory_offset = archive->size + 1;
+    archive->directory_offset = init_pos +1;
 
     /* writing groups headers. */
     status+= IO_enumWriteU32(fp, archive->num_of_groups);
@@ -464,8 +475,18 @@ ErrorCode write_directory(Archive *archive){
     /* writing the directory's offset at the end of the file. */
     status += IO_enumWriteU64(fp, archive->directory_offset);
 
+    /* update archive */
     /* indicate that file is new data is written */
     archive->written = 1;
+    
+    /* update size */
+    uint64_t end_pos = IO_u64Tell(fp);
+    archive->size += end_pos - init_pos;
+    
+    /* write new size to archive */
+    IO_enumSeek(fp, size_offset, SEEK_SET);
+    IO_enumWriteU64(fp, archive->size);
+    IO_enumSeek(fp, 0, SEEK_END);
 
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
@@ -484,8 +505,9 @@ ErrorCode write_field_local_header(Field * field){
         return FAILURE;
     }
 
+    uint64_t init_pos = IO_u64Tell(fp);
         /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp,archive->size) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+    if(IO_enumSeek(fp, 0, SEEK_END) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
         error("could not write field local header for field: %s. could not append to file.", field->name);
         return FAILURE;
     }
@@ -502,6 +524,11 @@ ErrorCode write_field_local_header(Field * field){
     status += IO_enumWriteU16(fp, field->type);
     status += IO_enumWriteU16(fp, (uint16_t) (strlen(field->name)+1) );
     status += IO_enumWriteString(fp, field->name);
+    uint64_t end_pos = IO_u64Tell(fp);
+    
+    field->full_size += end_pos - init_pos;
+    
+    // manage archive size.
     
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
@@ -516,6 +543,8 @@ ErrorCode write_field(Field * field){ // #TODO: pass the archive pointer directl
     FILE *fp = archive->fp;
     int status = write_field_header(field);
 
+    uint64_t init_pos = IO_u64Tell(fp);
+    field->offset = init_pos;
     if(field->compression == NON_COMPRESSED){
         if(field->type == TEXT || field->type == PASSWORD){
             status += IO_enumWriteString(fp, (char *) (field->content));
@@ -525,10 +554,18 @@ ErrorCode write_field(Field * field){ // #TODO: pass the archive pointer directl
     } else if(field->compression == DEFLATE){
         // #TODO: write with deflate algorithm.
     } else {
-        error("could not write field. invalid compression method in field: %s", field->name);
+        error("write_field: could not write field. invalid compression method in field: %s", field->name);
         return FAILURE;
     }
-    
+    uint64_t end_pos = IO_u64Tell(fp);
+    // manage field size.
+    field->size = end_pos - init_pos;
+    field->full_size += field->size;
+    // update field.
+    field->number_of_changes++; 
+    // archive size management.
+    archive->size += field->size;
+    // manage archive written status.
     // remove from updated list.
     vector_remove_value(archive->fields_updated, field);
 
@@ -540,7 +577,6 @@ ErrorCode write_archive(Archive *archive){
         errorp("write_archive: null pointer.");
         return NULL_POINTER;
     }
-    archive->num_of_changes++;
     int status = SUCCESS;
     // iterate through all updated fields and write them.
     // copy vector (as the main vector alters during the process).
@@ -553,6 +589,7 @@ ErrorCode write_archive(Archive *archive){
     status += write_directory(archive);
     
     archive->written = 1;
+    archive->num_of_changes++;
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
 
@@ -562,6 +599,9 @@ ErrorCode write_archive_clean(Archive * archive, char *new_file_name){
         return NULL_POINTER;
     }
     int status = SUCCESS;
+    // cleaning number of changes.
+    uint32_t old_n_changes = archive->num_of_changes;
+    archive->num_of_changes = 0;
     // write new archive with clean history.
     FILE *old_fp = archive->fp;
     FILE *new_fp = fopen(new_file_name, "wb+");
@@ -575,6 +615,7 @@ ErrorCode write_archive_clean(Archive * archive, char *new_file_name){
     
     fclose(new_fp);
     archive->fp = old_fp;
+    archive->num_of_changes = old_n_changes;
     
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
@@ -591,7 +632,7 @@ Group * read_group_header(Archive * archive, FILE *fp, uint64_t offset){
 
 Group ** read_group_headers(Archive * archive, FILE *fp, uint64_t n_groups_offset){
     /* seek to number of groups section. */
-    IO_enumSeek(fp, n_groups_offset);
+    IO_enumSeek(fp, n_groups_offset, SEEK_SET);
 
     uint32_t n;
     /* #TODO: parse number of groups into n */
@@ -633,9 +674,9 @@ Entry ** read_field_headers(Archive * archive, FILE *fp, uint64_t n_fields_offse
 
 Archive * read_directory(FILE *fp, uint64_t directory_offset){
     // seek to the directory.
-    IO_enumSeek(fp, directory_offset);
+    IO_enumSeek(fp, directory_offset, SEEK_SET);
 
-    Archive * archive = archive_create("", "");
+    Archive * archive = archive_create("", "", fp);
     // # TODO parse data into archive
     
 
@@ -654,6 +695,6 @@ Archive * read_archive(FILE *fp){
 void print_field_data(Field * field, FILE * stream){
     FILE * fp = field->entry->group->archive->fp; // archive file.
     // seek to field data & print it to stream.
-    IO_enumSeek(fp, field->offset + local_field_header_size(field));
+    IO_enumSeek(fp, field->offset + local_field_header_size(field), SEEK_SET);
     IO_enumPrintFile(stream, IO_u64Tell(fp), field->size, fp);
 }

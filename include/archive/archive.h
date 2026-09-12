@@ -71,7 +71,7 @@ typedef struct Archive{
 
 /* Memory Functions*/
 
-Archive * archive_create(char *name, char *description);
+Archive * archive_create(char *name, char *description, FILE *fp);
 void archive_destroy(Archive * archive);
 
 /* brief info about archive */

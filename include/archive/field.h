@@ -33,6 +33,7 @@ typedef struct Field{
     uint64_t offset;
     uint64_t compressed_size; // 0 for file with no compression.
     uint64_t size;
+    uint64_t full_size;
     uint32_t crc;
     uint32_t creation_date;
     uint32_t last_modification_date;
@@ -46,7 +47,7 @@ typedef struct Field{
 
 /* functions */
 
-Field * field_create(Entry *entry,uint64_t offset ,uint16_t type, char* name);
+Field * field_create(Entry *entry,uint64_t offset ,FieldType type, char* name);
 void field_destroy(Field *field);
 
 /* brief info about field */
@@ -57,9 +58,9 @@ uint32_t field_crc(Field *field);
 
 #endif
 
-/* mutators 
-don't forget to change last modification for everything in hierachy.*/
+/* mutators */
 void field_update_parents(Field * field);
+void field_add(Entry *entry, FieldType type, char *name);
 void field_set_name(Field *field, char * name);
 void field_set_content(Field *field, FieldType type, void * data);
 void field_set_compression(Field *field, CompressionType compression_type);

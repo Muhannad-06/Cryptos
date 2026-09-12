@@ -10,7 +10,10 @@ Field * field_create(Entry *entry, uint64_t offset, uint16_t type, char* name){
     }
     
     field->entry = entry;
-    field->offset = ++(entry->group->archive->size);
+    field->offset = 0;
+    /* offset is set to 0 initially.
+    * the offset of the field is assigned in the write operation.
+     */
     field->compressed_size=0;
     field->size = 0;
     field->crc = 0;
@@ -50,18 +53,26 @@ void field_update_parents(Field *field){
     vector_push_back(archive->fields_updated, field);
 }
 
+void field_update(Field *field){ // set field to be unwritten.
+    field->offset = 0;
+    field->size = 0;
+    field ->full_size = 0;
+    field->last_modification_date = (uint32_t) time(NULL); 
+}
+
 void field_set_name(Field *field, char * name){
-    field->last_modification_date = (uint32_t) time(NULL);
     field->name = name;
 
+    field_update(field);
     field_update_parents(field);
 }
 
 void field_set_content(Field *field, FieldType type, void *data){
-    field->last_modification_date = (uint32_t) time(NULL);
     field->type = type;
     field->content = data;
     field->crc = field_crc(field);
+
+    field_update(field);
     field_update_parents(field);
 }
 
@@ -69,18 +80,19 @@ void field_set_compression(Field *field, CompressionType compression_type){
     field->last_modification_date = (uint32_t) time(NULL);
     field->compression = compression_type;
 
+    field_update(field);
     field_update_parents(field);
 }
 
 void field_set_entry(Field *field, Entry *new_entry){
-    field->last_modification_date = (uint32_t) time(NULL);
-
     vector_remove_value(field->entry->group->fields, field);
     vector_remove_value(field->entry->fields, field);
     field_update_parents(field);
     
     field->entry = new_entry;
     vector_push_back(field->entry->group->fields, field);
+
+    field_update(field);
     field_update_parents(field);
 }
 
@@ -92,7 +104,7 @@ void field_delete(Field *field){
     // remove from entry
     vector_remove_value(field->entry->fields, field);
 
-    field->last_modification_date = (uint32_t) time(NULL);
+    field_update(field);
     field_update_parents(field);
     field_destroy(field);
 }
