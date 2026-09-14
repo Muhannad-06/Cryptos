@@ -1,8 +1,9 @@
 #include "../../include/archive/archive.h"
+#include "../../include/utils/error.h"
 #include <stdint.h>
 #include <time.h>
 
-Field * field_create(Entry *entry, uint64_t offset, uint16_t type, char* name){
+Field * field_create(Entry *entry, uint16_t type, char* name){
     Field * field = malloc(sizeof(Field));
     
     if(!field){
@@ -26,6 +27,9 @@ Field * field_create(Entry *entry, uint64_t offset, uint16_t type, char* name){
     vector_push_back(entry->fields, field);
     vector_push_back(entry->group->fields, field);
     vector_push_back(entry->group->archive->fields, field);
+    // update modification dates
+    field_update_parents(field);
+    field_update(field);
 
     return field;
 }
@@ -43,7 +47,13 @@ uint32_t field_crc(Field *field){
 }
 
 /* mutators */
-void field_update_parents(Field *field){
+ErrorCode field_update_parents(Field *field){
+    if(!field || !(field->entry) || !(field->entry->group) || !(field->entry->group->archive)){
+        errorp("field_update_parents: null pointer");
+        return NULL_POINTER;
+    }
+    // ErrorCode status = SUCCESS;
+
     field->entry->last_modification_date = field->last_modification_date;
     field->entry->group->last_modification_date = field->last_modification_date;
 
@@ -51,40 +61,74 @@ void field_update_parents(Field *field){
     archive->last_modification_date = field->last_modification_date;
     archive->written = 0;
     vector_push_back(archive->fields_updated, field);
+    
+    return SUCCESS;
 }
 
-void field_update(Field *field){ // set field to be unwritten.
+ErrorCode field_update(Field *field){ // set field to be unwritten.
+    if(!field || !(field->entry) || !(field->entry->group) || !(field->entry->group->archive)){
+        errorp("field_update: null pointer");
+        return NULL_POINTER;
+    }
     field->offset = 0;
     field->size = 0;
     field ->full_size = 0;
     field->last_modification_date = (uint32_t) time(NULL); 
+
+    return SUCCESS;
 }
 
-void field_set_name(Field *field, char * name){
+ErrorCode field_set_name(Field *field, char * name){
+    if(!field || !(field->entry) || !(field->entry->group) || !(field->entry->group->archive)){
+        errorp("field_set_name: null pointer");
+        return NULL_POINTER;
+    }
+    ErrorCode status = SUCCESS;
+
     field->name = name;
 
-    field_update(field);
-    field_update_parents(field);
+    status +=field_update(field);
+    status +=field_update_parents(field);
+
+    return (status !=SUCCESS )? FAILURE:SUCCESS;
 }
 
-void field_set_content(Field *field, FieldType type, void *data){
+ErrorCode field_set_content(Field *field, FieldType type, void *data){
+    if(!field || !(field->entry) || !(field->entry->group) || !(field->entry->group->archive)){
+        errorp("field_set_content: null pointer");
+        return NULL_POINTER;
+    }
+    ErrorCode status = SUCCESS;
     field->type = type;
     field->content = data;
     field->crc = field_crc(field);
 
-    field_update(field);
-    field_update_parents(field);
+    status += field_update(field);
+    status += field_update_parents(field);
+
+    return (status !=SUCCESS )? FAILURE:SUCCESS;
 }
 
-void field_set_compression(Field *field, CompressionType compression_type){
+ErrorCode field_set_compression(Field *field, CompressionType compression_type){
+    if(!field || !(field->entry) || !(field->entry->group) || !(field->entry->group->archive)){
+        errorp("field_set_compression: null pointer");
+        return NULL_POINTER;
+    }
+    ErrorCode status = SUCCESS;
     field->last_modification_date = (uint32_t) time(NULL);
     field->compression = compression_type;
 
-    field_update(field);
-    field_update_parents(field);
+    status+=field_update(field);
+    status+=field_update_parents(field);
+    return (status !=SUCCESS )? FAILURE:SUCCESS;
 }
 
-void field_set_entry(Field *field, Entry *new_entry){
+ErrorCode field_set_entry(Field *field, Entry *new_entry){
+    if(!field || !(field->entry) || !(field->entry->group) || !(field->entry->group->archive)){
+        errorp("field_set_entry: null pointer");
+        return NULL_POINTER;
+    }
+    ErrorCode status = SUCCESS;
     vector_remove_value(field->entry->group->fields, field);
     vector_remove_value(field->entry->fields, field);
     field_update_parents(field);
@@ -92,11 +136,17 @@ void field_set_entry(Field *field, Entry *new_entry){
     field->entry = new_entry;
     vector_push_back(field->entry->group->fields, field);
 
-    field_update(field);
-    field_update_parents(field);
+    status+=field_update(field);
+    status+=field_update_parents(field);
+    return (status !=SUCCESS )? FAILURE:SUCCESS;
 }
 
-void field_delete(Field *field){
+ErrorCode field_delete(Field *field){
+    if(!field || !(field->entry) || !(field->entry->group) || !(field->entry->group->archive)){
+        errorp("field_set_entry: null pointer");
+        return NULL_POINTER;
+    }
+    ErrorCode status = SUCCESS;
     // remove from achive
     vector_remove_value(field->entry->group->archive->fields, field);
     // remove from group.
@@ -104,7 +154,9 @@ void field_delete(Field *field){
     // remove from entry
     vector_remove_value(field->entry->fields, field);
 
-    field_update(field);
-    field_update_parents(field);
+    status+=field_update(field);
+    status+=field_update_parents(field);
     field_destroy(field);
+
+    return (status !=SUCCESS )? FAILURE:SUCCESS;
 }

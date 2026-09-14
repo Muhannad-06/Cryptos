@@ -19,6 +19,8 @@ Entry * entry_create(Group* group, char* name){
     vector_push_back(group->entries, entry);
     vector_push_back(group->archive->entries, entry);
     
+    entry_update_parents(entry);
+    
     return entry;
 }
 
@@ -38,34 +40,53 @@ void entry_destroy(Entry * entry){
 
 /* mutators */
 
-void entry_update_parents(Entry *entry){
+ErrorCode entry_update_parents(Entry *entry){
+    if(!entry){
+        errorp("entry_update_parents: null pointer");
+        return NULL_POINTER;
+    }
     entry->group->last_modification_date = entry->last_modification_date;
 
     entry->group->archive->last_modification_date = entry->last_modification_date;
     entry->group->archive->written = 0;
+    return SUCCESS;
 }
 
-void entry_set_name(Entry *entry, char *name){
+ErrorCode entry_set_name(Entry *entry, char *name){
+    if(!entry){
+        errorp("entry_set_name: null pointer");
+        return NULL_POINTER;
+    }
+    ErrorCode status = SUCCESS; 
     entry->last_modification_date = (uint32_t) time(NULL);
     entry->name = name;
     
-    entry_update_parents(entry);
+    status += entry_update_parents(entry);
+    return (status !=SUCCESS )? FAILURE:SUCCESS;
 }
 
-void entry_set_group(Entry *entry, Group *new_group){
+ErrorCode entry_set_group(Entry *entry, Group *new_group){
     if(!entry || !new_group){
-        error("entry_set_group: null pointer.");
+        errorp("entry_set_group: null pointer.");
+        return NULL_POINTER;
     }
+    ErrorCode status = SUCCESS;
     entry->last_modification_date = (uint32_t) time(NULL);
 
     vector_remove_value(entry->group->entries, entry);
     entry_update_parents(entry);
 
     entry->group = new_group;
-    entry_update_parents(entry);
+    status +=entry_update_parents(entry);
+    return (status !=SUCCESS )? FAILURE:SUCCESS;
 }
 
-void entry_delete(Entry *entry){
+ErrorCode entry_delete(Entry *entry){
+    if(!entry){
+        errorp("entry_delete: null pointer.");
+        return NULL_POINTER;
+    }
+    ErrorCode status = SUCCESS;
     // removing entry from vectors.
     // remove from archive.
     entry->group->archive->num_of_entries--;
@@ -77,10 +98,11 @@ void entry_delete(Entry *entry){
     // removing entry's fields.
     Vector *fields_vector = entry->fields;
     for(int i = 0; i<fields_vector->size; i++){
-        field_delete(vector_at(fields_vector, i));
+        status += field_delete(vector_at(fields_vector, i));
     }
     
     entry->last_modification_date = (uint32_t) time(NULL);
-    entry_update_parents(entry);
+    status += entry_update_parents(entry);
     entry_destroy(entry);
+    return (status !=SUCCESS )? FAILURE:SUCCESS;
 }

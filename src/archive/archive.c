@@ -54,22 +54,26 @@ Archive * archive_clean_history(Archive * archive){
 
 
 /* mutators */
-void archive_set_name(Archive *archive, char *name){
+ErrorCode archive_set_name(Archive *archive, char *name){
     if(!archive){
-        error("archive_set_name: null pointer.");
+        errorp("archive_set_name: null pointer.");
+        return NULL_POINTER;
     }
     archive->name = name;
     
     archive->written = 0;
+    return SUCCESS;
 }
 
-void archive_set_description(Archive *archive, char *description){
+ErrorCode archive_set_description(Archive *archive, char *description){
     if(!archive){
         error("archive_set_description: null pointer.");
+        return NULL_POINTER;
     }
     archive->description = description;
     
     archive->written = 0;
+    return SUCCESS;
 }
 
 char *archive_to_string(Archive *archive){
@@ -705,9 +709,11 @@ Archive * read_archive(FILE *fp){
     return archive;
 }
 
-void print_field_data(Field * field, FILE * stream){
+ErrorCode print_field_data(Field * field, FILE * stream){
+    ErrorCode status = SUCCESS;
     FILE * fp = field->entry->group->archive->fp; // archive file.
     // seek to field data & print it to stream.
     IO_enumSeek(fp, field->offset + local_field_header_size(field), SEEK_SET);
     IO_enumPrintFile(stream, IO_u64Tell(fp), field->size, fp);
+    return status;
 }

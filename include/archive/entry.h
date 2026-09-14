@@ -1,6 +1,7 @@
 #ifndef ENTRY_H
 #define ENTRY_H
 
+#include "../types.h"
 #include <stdint.h>
 
 typedef struct Group Group;
@@ -28,8 +29,9 @@ void entry_destroy(Entry * entry);
 char * entry_to_string(Entry * entry);
 
 /* mutators */
-void entry_update_parents(Entry *entry);
-void entry_set_name(Entry *entry, char *name);
-void entry_set_group(Entry *entry, Group *new_group);
-void entry_delete(Entry *entry);
+ErrorCode entry_update_parents(Entry *entry);
+ErrorCode entry_update(Entry *entry);
+ErrorCode entry_set_name(Entry *entry, char *name);
+ErrorCode entry_set_group(Entry *entry, Group *new_group);
+ErrorCode entry_delete(Entry *entry);
 #endif

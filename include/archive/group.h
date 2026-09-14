@@ -2,6 +2,7 @@
 #define GROUP_H
 
 #include <stdint.h>
+#include "../types.h"
 
 typedef struct Archive Archive;
 typedef struct Entry Entry;
@@ -29,8 +30,9 @@ void group_destroy(Group * group);
 char * group_to_string(Group * group);
 
 /* mutators */
-void group_update_parents(Group *group);
-void group_set_name(Group *group, char *name);
-void group_delete(Group *group);
+ErrorCode group_update_parents(Group *group);
+ErrorCode group_update(Group *group);
+ErrorCode group_set_name(Group *group, char *name);
+ErrorCode group_delete(Group *group);
 
 #endif
