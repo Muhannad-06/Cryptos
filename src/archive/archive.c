@@ -313,7 +313,7 @@ ErrorCode write_group_header(Group * group){
     FILE *fp = archive->fp;
     /* check if file is open and appendable. */
     if(fp == NULL){
-        error("write_group_header: could not write group header for group: %s. file not open.", group->name);
+        errorp("write_group_header: could not write group header for group: %s. file not open.", group->name);
         return FAILURE;
     }
 
@@ -328,7 +328,7 @@ ErrorCode write_group_header(Group * group){
     status += IO_enumWriteU32(fp, group->group_id); // writing group ID
     status += IO_enumWriteU32(fp, group->creation_date);
     status += IO_enumWriteU32(fp, group->last_modification_date);
-    status += IO_enumWriteU16(fp, (uint16_t) (strlen(group->name) + 1));
+    status += IO_enumWriteU16(fp, (uint16_t) (strlen(group->name) /*+ 1*/)); // + 1 is for null character. null character is not written.
     status += IO_enumWriteString(fp, group->name);
     
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
@@ -344,13 +344,13 @@ ErrorCode write_entry_header(Entry * entry){
     FILE *fp = archive->fp;
     /* check if file is open and appendable. */
     if(fp == NULL){
-        error("could not write entry header for entry: %s. file not open.", entry->name);
+        errorp("could not write entry header for entry: %s. file not open.", entry->name);
         return FAILURE;
     }
 
         /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp, 0, SEEK_SET) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
-        error("could not write entry header for entry: %s. could not append to file.", entry->name);
+    if(IO_enumSeek(fp, 0, SEEK_END) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+        errorp("could not write entry header for entry: %s. could not append to file.", entry->name);
         return FAILURE;
     }
     
@@ -360,7 +360,7 @@ ErrorCode write_entry_header(Entry * entry){
     status += IO_enumWriteU32(fp, entry->entry_id); // writing entry ID
     status += IO_enumWriteU32(fp, entry->creation_date);
     status += IO_enumWriteU32(fp, entry->last_modification_date);
-    status += IO_enumWriteU16(fp, (uint16_t) (strlen(entry->name)+1));
+    status += IO_enumWriteU16(fp, (uint16_t) (strlen(entry->name)));
     status += IO_enumWriteString(fp, entry->name);
     
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
@@ -376,7 +376,7 @@ ErrorCode write_field_header(Field * field){
     FILE *fp = archive->fp;
     /* check if file is open and appendable. */
     if(fp == NULL){
-        error("could not write field header for field: %s. file not open.", field->name);
+        errorp("could not write field header for field: %s. file not open.", field->name);
         return FAILURE;
     }
 
@@ -397,7 +397,7 @@ ErrorCode write_field_header(Field * field){
     status += IO_enumWriteU32(fp, field->creation_date);
     status += IO_enumWriteU32(fp, field->last_modification_date);
     status += IO_enumWriteU16(fp, field->type);
-    status += IO_enumWriteU16(fp, (uint16_t) (strlen(field->name)+1));
+    status += IO_enumWriteU16(fp, (uint16_t) (strlen(field->name)));
     status += IO_enumWriteString(fp, field->name);
     
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
@@ -418,14 +418,19 @@ ErrorCode write_directory(Archive *archive){
     FILE *fp = archive->fp;
     /* check if file is open and appendable. */
     if(fp == NULL){
-        error("could not write drectory: %s. file not open.", archive->name);
+        errorp("could not write drectory: %s. file not open.", archive->name);
         return FAILURE;
     }
 
-    uint64_t init_pos = IO_u64Tell(fp);
         /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp, 0 , SEEK_END) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
-        error("could not write file directory: %s. could not append to file.", archive->name);
+    if(IO_enumSeek(fp, 0 , SEEK_END) !=  SUCCESS){
+        errorp("could not write file directory: %s. could not append to file.", archive->name);
+        return FAILURE;
+    }
+    // initial position of the directory.
+    uint64_t init_pos = IO_u64Tell(fp);
+    if(IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+        errorp("write directory: couldn't write magic number to the file.");
         return FAILURE;
     }
     
@@ -441,12 +446,13 @@ ErrorCode write_directory(Archive *archive){
     status += IO_enumWriteU64(fp, 0); // place hold. 
     status += IO_enumWriteU32(fp, archive->creation_date);
     status += IO_enumWriteU32(fp, archive->last_modification_date);
-    status += IO_enumWriteU32(fp, archive->num_of_changes);
+    archive->num_of_changes++;
+    status += IO_enumWriteU32(fp, archive->num_of_changes); // changes in write_directory.
     /* updating directory offset. */
     status += IO_enumWriteU32(fp, archive->directory_offset);
     archive->prev_dir_offset = archive->directory_offset;
     // archive->directory_offset = archive->size + 1;
-    archive->directory_offset = init_pos +1;
+    archive->directory_offset = init_pos;
 
     /* writing groups headers. */
     status+= IO_enumWriteU32(fp, archive->num_of_groups);
@@ -465,12 +471,12 @@ ErrorCode write_directory(Archive *archive){
     }
 
     /* writing archive name */
-    status+= IO_enumWriteU16(fp, strlen(archive->name) + 1); // added 1 for the null character.
+    status+= IO_enumWriteU16(fp, strlen(archive->name)); // added 1 for the null character. null character is not written.
     status+= IO_enumWriteString(fp, archive->name); // added 1 for the null character.
     
     /* writing archive description */
-    status+= IO_enumWriteU16(fp, strlen(archive->description) + 1); // added 1 for the null character.
-    status+= IO_enumWriteString(fp, archive->description); // added 1 for the null character.
+    status+= IO_enumWriteU16(fp, strlen(archive->description)); // added 1 for the null character. null character is not written.
+    status+= IO_enumWriteString(fp, archive->description);
     
     /* writing the directory's offset at the end of the file. */
     status += IO_enumWriteU64(fp, archive->directory_offset);
@@ -505,10 +511,16 @@ ErrorCode write_field_local_header(Field * field){
         return FAILURE;
     }
 
-    uint64_t init_pos = IO_u64Tell(fp);
         /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp, 0, SEEK_END) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+    if(IO_enumSeek(fp, 0, SEEK_END) != SUCCESS){
         error("could not write field local header for field: %s. could not append to file.", field->name);
+        return FAILURE;
+    }
+    // initial position.
+    uint64_t init_pos = IO_u64Tell(fp);
+    // test writing magic byte.
+    if(IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+        error("write_field_local_header: couldn't write magic number to file.");
         return FAILURE;
     }
     
@@ -522,29 +534,31 @@ ErrorCode write_field_local_header(Field * field){
     status += IO_enumWriteU32(fp, field->creation_date);
     status += IO_enumWriteU32(fp, field->last_modification_date);
     status += IO_enumWriteU16(fp, field->type);
-    status += IO_enumWriteU16(fp, (uint16_t) (strlen(field->name)+1) );
+    status += IO_enumWriteU16(fp, (uint16_t) (strlen(field->name)) );
     status += IO_enumWriteString(fp, field->name);
     uint64_t end_pos = IO_u64Tell(fp);
     
+    // add local header size to the field's full size.
     field->full_size += end_pos - init_pos;
     
     // manage archive size.
+    archive->size += field->full_size;
     
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
 
-ErrorCode write_field(Field * field){ // #TODO: pass the archive pointer directly.
+ErrorCode write_field(Field * field){
     if(!field){
         errorp("write_field: null pointer.");
         return NULL_POINTER;
     }
-    // #TODO pass the archive pointer to the write header functions
+
     Archive *archive = field->entry->group->archive;
     FILE *fp = archive->fp;
     int status = write_field_header(field);
 
     uint64_t init_pos = IO_u64Tell(fp);
-    field->offset = init_pos;
+    field->offset = init_pos; // assigning field offset.
     if(field->compression == NON_COMPRESSED){
         if(field->type == TEXT || field->type == PASSWORD){
             status += IO_enumWriteString(fp, (char *) (field->content));
@@ -554,7 +568,7 @@ ErrorCode write_field(Field * field){ // #TODO: pass the archive pointer directl
     } else if(field->compression == DEFLATE){
         // #TODO: write with deflate algorithm.
     } else {
-        error("write_field: could not write field. invalid compression method in field: %s", field->name);
+        errorp("write_field: could not write field. invalid compression method in field: %s", field->name);
         return FAILURE;
     }
     uint64_t end_pos = IO_u64Tell(fp);
@@ -565,7 +579,6 @@ ErrorCode write_field(Field * field){ // #TODO: pass the archive pointer directl
     field->number_of_changes++; 
     // archive size management.
     archive->size += field->size;
-    // manage archive written status.
     // remove from updated list.
     vector_remove_value(archive->fields_updated, field);
 
@@ -589,7 +602,7 @@ ErrorCode write_archive(Archive *archive){
     status += write_directory(archive);
     
     archive->written = 1;
-    archive->num_of_changes++;
+    // archive->num_of_changes++; // this is handled in write_directory.
     return (status != SUCCESS)? FAILURE : SUCCESS; // return success or failure.
 }
 
