@@ -4,14 +4,17 @@
 #include <time.h>
 
 Entry * entry_create(Group* group, char* name){
+    if (!group || !name) {
+        errorp("entry_create: null pointer.");
+    }
     Entry * entry = malloc(sizeof(Entry));
     if(!entry)
-        return NULL;
-    
+        error("entry_create: couldn't allocate memory for entry: %s", name);
+
     entry->creation_date = (uint32_t) time(NULL);
     entry->last_modification_date = entry->creation_date;
     entry->group = group;
-    entry->entry_id = ++(group->archive->num_of_entries); /* get the last entry's ID and increase it by 1. */
+    entry->entry_id = (group->archive->num_of_entries)++; /* get the last entry's ID and increase it by 1. start with 0*/
     entry->name = name;
     entry->fields = vector_create();
     
@@ -28,7 +31,7 @@ void entry_destroy(Entry * entry){
     if(!entry)
         return;
     
-    free(entry->name);
+    // free(entry->name);
     
     /* Destroy all fields */
     for(int i = 0; i < entry->fields->size ; i++){
@@ -42,8 +45,7 @@ void entry_destroy(Entry * entry){
 
 ErrorCode entry_update_parents(Entry *entry){
     if(!entry){
-        errorp("entry_update_parents: null pointer");
-        return NULL_POINTER;
+        error("entry_update_parents: null pointer");
     }
     entry->group->last_modification_date = entry->last_modification_date;
 
@@ -54,8 +56,7 @@ ErrorCode entry_update_parents(Entry *entry){
 
 ErrorCode entry_set_name(Entry *entry, char *name){
     if(!entry){
-        errorp("entry_set_name: null pointer");
-        return NULL_POINTER;
+        error("entry_set_name: null pointer");
     }
     ErrorCode status = SUCCESS; 
     entry->last_modification_date = (uint32_t) time(NULL);
@@ -67,8 +68,7 @@ ErrorCode entry_set_name(Entry *entry, char *name){
 
 ErrorCode entry_set_group(Entry *entry, Group *new_group){
     if(!entry || !new_group){
-        errorp("entry_set_group: null pointer.");
-        return NULL_POINTER;
+        error("entry_set_group: null pointer.");
     }
     ErrorCode status = SUCCESS;
     entry->last_modification_date = (uint32_t) time(NULL);
@@ -83,8 +83,7 @@ ErrorCode entry_set_group(Entry *entry, Group *new_group){
 
 ErrorCode entry_delete(Entry *entry){
     if(!entry){
-        errorp("entry_delete: null pointer.");
-        return NULL_POINTER;
+        error("entry_delete: null pointer.");
     }
     ErrorCode status = SUCCESS;
     // removing entry from vectors.

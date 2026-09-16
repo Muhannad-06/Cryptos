@@ -35,15 +35,17 @@ typedef struct Field{
     uint64_t compressed_size; // 0 for file with no compression.
     uint64_t size;
     uint64_t full_size;
+    uint64_t compressed_size_offset; /* size section offset in the local header. required for writing the local header.
+    * this variable is not needed in writing the field header in the directory as the field is already written and it's size is calculated. */
     uint32_t crc;
     uint32_t creation_date;
     uint32_t last_modification_date;
     uint32_t number_of_changes; // number of updates to the field.
+    char* name;
     void * content; // should either string or file pointer.
     FieldType type; //
     CompressionType compression;
 
-    char* name;
 } Field ;
 
 /* functions */

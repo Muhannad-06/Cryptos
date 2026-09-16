@@ -6,7 +6,7 @@
 Group * group_create(Archive * archive, char *name){
     Group * group = malloc(sizeof(Group));
     if(!group){
-        return NULL;
+        error("could not allocate group, %s", name);
     }
     
     group->archive = archive;
@@ -14,7 +14,7 @@ Group * group_create(Archive * archive, char *name){
     group->last_modification_date = group->creation_date;
     group->entries = vector_create();
     group->fields = vector_create();
-    group->group_id = ++(archive->num_of_groups);
+    group->group_id = (archive->num_of_groups)++;
     group->name = name;
     
     // add the group to vectors
@@ -40,7 +40,7 @@ void group_destroy(Group *group){
     vector_destroy(group->entries);
     vector_destroy(group->fields);
     
-    free(group->name);
+    // free(group->name);
     free(group);
 }
 

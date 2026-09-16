@@ -27,7 +27,7 @@
 #define MAX_CHANGES 4294967296 // maximum number of archive directories, for each change in archive a new directory is written.
 
 /* Magic Number */
-#define MAGIC_NUMBER  0x4D4D3333  /* MM33 */
+#define MAGIC_NUMBER  0x33334D4D /* in file it is reversed by little endian to be MM33 */
 
 /* functions to calculate size of parts that have variable length */
 uint64_t group_header_size (Group * group);

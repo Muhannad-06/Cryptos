@@ -13,13 +13,16 @@
 /* memory functions. */
 Archive * archive_create(char *name, char *description, FILE *fp){
     Archive * archive = malloc(sizeof(Archive));
-    if(!archive) return NULL;
+    if(!archive) {
+        error("archive_create: couldn't allocate memory for archive");
+    }
     
     archive->directory_offset = 0; // initially 0 until it's written.
     archive->fp = fp;
     archive->groups = vector_create();
     archive->entries = vector_create();
     archive->fields = vector_create();
+    archive->fields_updated = vector_create();
     archive->name = name;
     archive->description = description;
     archive->version = ARCHIVE_VERSION /* current project version */ ; 
@@ -35,17 +38,29 @@ Archive * archive_create(char *name, char *description, FILE *fp){
     return archive;
 }
 
+void archive_destroy(Archive *archive){
+    for(size_t i = 0; i<archive->num_of_groups; i++){
+        group_destroy(vector_at(archive->groups, i));
+        // group_destroy handles destroying entries and fields.
+    }
+    vector_destroy(archive->groups);
+    vector_destroy(archive->entries);
+    vector_destroy(archive->fields);
+    vector_destroy(archive->fields_updated);
+    // free(archive->name);
+    // free(archive->description);
+    free(archive);
+}
+
 Archive * archive_clean_history(Archive * archive){
     if(!archive){
-        errorp("archive_clean_history: null pointer");
-        return NULL;
+        error("archive_clean_history: null pointer");
     }
     
     char * new_file_name = strcat(archive->name, "_clean");
     
     if(write_archive_clean(archive, new_file_name) ==FAILURE){
-        errorp("archive_clean_history: couldn't write new archive.");
-        return NULL;
+        error("archive_clean_history: couldn't write new archive.");
     }
     
     archive->fp = fopen(new_file_name, "wb+");
@@ -95,14 +110,13 @@ char *archive_to_string(Archive *archive){
 
 Archive * archive_get_backward(Archive * archive, uint32_t steps){
     if(!archive){
-        return NULL;
+        error("archive_get_backward: null pointer");
     }
 
     for(uint32_t i = 0; i < steps; i++){
         archive = read_directory(archive->fp, archive->prev_dir_offset);
         if(!archive){
-            errorp("archive_get_backward: couldn't get backward version by %u steps", steps);
-            return NULL;
+            error("archive_get_backward: couldn't get backward version by %u steps", steps);
         }
     }
 
@@ -124,7 +138,7 @@ Vector * archive_get_versions(Archive *archive){
         error("archive_get_versions: allocation for archive_versions failed.");
     }
 
-    int c = archive->num_of_changes;
+    uint32_t c = archive->num_of_changes;
     while(c-->0){
         archive_versions[c] = archive;
         if(c > 0){
@@ -280,7 +294,7 @@ uint64_t directory_size(Archive *archive){
     uint64_t field_headers_size= 0;
 
     for(int i = 0; i<(archive->fields->size); i++){
-        field_headers_size += field_header_size(archive->fields->data[i]);
+        field_headers_size +=  field_header_size(archive->fields->data[i]);
     }
 
     for(int i = 0; i<(archive->groups->size); i++){
@@ -433,6 +447,7 @@ ErrorCode write_directory(Archive *archive){
     }
     // initial position of the directory.
     uint64_t init_pos = IO_u64Tell(fp);
+
     if(IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
         errorp("write directory: couldn't write magic number to the file.");
         return FAILURE;
@@ -453,7 +468,8 @@ ErrorCode write_directory(Archive *archive){
     archive->num_of_changes++;
     status += IO_enumWriteU32(fp, archive->num_of_changes); // changes in write_directory.
     /* updating directory offset. */
-    status += IO_enumWriteU32(fp, archive->directory_offset);
+    // writing prev directory offset
+    status += IO_enumWriteU64(fp, archive->directory_offset);
     archive->prev_dir_offset = archive->directory_offset;
     // archive->directory_offset = archive->size + 1;
     archive->directory_offset = init_pos;
@@ -522,16 +538,18 @@ ErrorCode write_field_local_header(Field * field){
     }
     // initial position.
     uint64_t init_pos = IO_u64Tell(fp);
+    field->offset = init_pos; // assigning field offset.
     // test writing magic byte.
     if(IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
         error("write_field_local_header: couldn't write magic number to file.");
         return FAILURE;
     }
     
-    /* writing header content */    
+    /* writing header content */
 
     status += IO_enumWriteU32(fp, field->entry->entry_id); // writing entry ID
     status += IO_enumWriteU16(fp, field->compression);
+    field->compressed_size_offset = IO_u64Tell(fp);
     status += IO_enumWriteU64(fp, field->compressed_size);
     status += IO_enumWriteU64(fp, field->size);
     status += IO_enumWriteU32(fp, field_crc(field));
@@ -553,16 +571,14 @@ ErrorCode write_field_local_header(Field * field){
 
 ErrorCode write_field(Field * field){
     if(!field){
-        errorp("write_field: null pointer.");
-        return NULL_POINTER;
+        error("write_field: null pointer.");
     }
 
     Archive *archive = field->entry->group->archive;
     FILE *fp = archive->fp;
-    int status = write_field_header(field);
+    int status = write_field_local_header(field);
 
     uint64_t init_pos = IO_u64Tell(fp);
-    field->offset = init_pos; // assigning field offset.
     if(field->compression == NON_COMPRESSED){
         if(field->type == TEXT || field->type == PASSWORD){
             status += IO_enumWriteString(fp, (char *) (field->content));
@@ -582,7 +598,13 @@ ErrorCode write_field(Field * field){
     // update field.
     field->number_of_changes++; 
     // archive size management.
-    archive->size += field->size;
+    archive->size += field->size; /* the local header size is added to archive size in write_field_local_header */
+    /* writing the new size in the local header */
+    field->compressed_size = field->size; // Assuming no compression for now
+    IO_enumSeek(fp, field->compressed_size_offset, SEEK_SET);
+    IO_enumWriteU64(fp, field->compressed_size);
+    IO_enumWriteU64(fp, field->size);
+    IO_enumSeek(fp, 0, SEEK_END);
     // remove from updated list.
     vector_remove_value(archive->fields_updated, field);
 
@@ -597,11 +619,11 @@ ErrorCode write_archive(Archive *archive){
     int status = SUCCESS;
     // iterate through all updated fields and write them.
     // copy vector (as the main vector alters during the process).
-    Vector fields_to_write = *vector_copy(archive->fields_updated);
-    for (int i = 0; i < fields_to_write.size ; i++) {
-        write_field(vector_at(&fields_to_write, i));
+    Vector * fields_to_write = vector_copy(archive->fields_updated);
+    for (size_t i = 0; i < fields_to_write->size ; i++) {
+        write_field(vector_at(fields_to_write, i));
     }
-    vector_destroy(&fields_to_write);
+    vector_destroy(fields_to_write);
     // write directory.
     status += write_directory(archive);
     

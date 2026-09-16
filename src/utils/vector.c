@@ -1,4 +1,5 @@
 #include "../../include/utils/vector.h"
+#include "../../include/utils/error.h"
 #include <stdio.h> 
 #include <stdlib.h>
 
@@ -12,7 +13,10 @@ Vector * vector_create(){
 }
 
 Vector *vector_copy(Vector *src){
-    if (!src) return NULL;
+    // if (!src) return NULL;
+    if (!src) {
+        error("vector_copy: null pointer");
+    }
     Vector *copy = vector_create();    
     copy->capacity = src->capacity;
     // deep copy for the data array.
@@ -35,6 +39,9 @@ Vector *vector_copy(Vector *src){
 }
 
 void * vector_push_back(Vector * vector, void * value){
+    if (vector == NULL) {
+        error("vector_push_back: null pointer");
+    }
     if(vector->data == NULL){
         vector->data = malloc(sizeof(void *));
         if(vector->data == NULL)
@@ -56,6 +63,9 @@ void * vector_push_back(Vector * vector, void * value){
 }
 
 void * vector_pop_back(Vector * vector){
+    if (vector == NULL) {
+        error("vector_pop_back: null pointer");
+    }
 
     if(vector->size <= 0)
         return NULL;
@@ -68,15 +78,21 @@ void * vector_pop_back(Vector * vector){
 }
 
 void * vector_at(Vector * vector, size_t index){
+    if (vector == NULL) {
+        error("vector_at: null pointer");
+    }
     if (index >= vector->size) {
-    fprintf(stderr, "Index out of bounds\n"); // Print an error message
-    exit(1); 
+        /* note: size_t is unsigned. >= is enough */
+        error("vector_at: index out of bounds");
     }
 
     return vector->data[index];
 }
 
 void * vector_remove_value(Vector *vector, void * value){
+    if (vector == NULL) {
+        error("vector_remove_value: null pointer");
+    }
     if (!vector || vector->capacity == 0) return NULL;
     /* create a new data array. */ 
     void **newData = malloc(vector->capacity * sizeof(void *));

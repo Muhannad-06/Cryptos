@@ -3,11 +3,11 @@
 #include <stdint.h>
 #include <time.h>
 
-Field * field_create(Entry *entry, uint16_t type, char* name){
+Field * field_create(Entry *entry, FieldType type, char* name){
     Field * field = malloc(sizeof(Field));
     
     if(!field){
-        return NULL;
+        error("field_create: null pointer");
     }
     
     field->entry = entry;
@@ -15,6 +15,7 @@ Field * field_create(Entry *entry, uint16_t type, char* name){
     /* offset is set to 0 initially.
     * the offset of the field is assigned in the write operation.
      */
+    field->name = name;
     field->compressed_size=0;
     field->size = 0;
     field->crc = 0;
@@ -28,15 +29,22 @@ Field * field_create(Entry *entry, uint16_t type, char* name){
     vector_push_back(entry->group->fields, field);
     vector_push_back(entry->group->archive->fields, field);
     // update modification dates
-    field_update_parents(field);
     field_update(field);
+    field_update_parents(field);
 
     return field;
 }
 
 void field_destroy(Field *field) {
     if (!field) return;
-    free(field->name);
+
+    // if (field->type == TEXT || field->type == PASSWORD) {
+    //     free(field->content);
+    // } else if (field->type == BINARY) {
+    //     fclose((FILE *)field->content);
+    // }
+    //
+    // free(field->name);
     free(field);
 }
 
@@ -60,8 +68,17 @@ ErrorCode field_update_parents(Field *field){
     Archive * archive = field->entry->group->archive;
     archive->last_modification_date = field->last_modification_date;
     archive->written = 0;
-    vector_push_back(archive->fields_updated, field);
-    
+    int exists = 0;
+    for(size_t i = 0; i < archive->fields_updated->size; i++) {
+        if(vector_at(archive->fields_updated, i) == field) {
+            exists = 1;
+            break;
+        }
+    }
+    if(!exists) {
+        vector_push_back(archive->fields_updated, field);
+    }
+
     return SUCCESS;
 }
 
@@ -147,7 +164,7 @@ ErrorCode field_delete(Field *field){
         return NULL_POINTER;
     }
     ErrorCode status = SUCCESS;
-    // remove from achive
+    // remove from archive
     vector_remove_value(field->entry->group->archive->fields, field);
     // remove from group.
     vector_remove_value(field->entry->group->fields, field);
