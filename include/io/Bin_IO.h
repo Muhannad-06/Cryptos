@@ -59,5 +59,9 @@ uint64_t IO_u64Tell(FILE *fp);
 /* Moves the file cursor to an absolute byte offset from the beginning of the file */
 ErrorCode IO_enumSeek(FILE *fp, uint64_t offset);
 
+/*<<<<<<<<<<<<<<<<<<<<<<<<<<<< * Helper Functions * >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*   These functions are frequently updated synchoronously with the project depending on The Project Requirements */
+/* Returns the size of the file in bytes. */
+ErrorCode IO_u64FileSize(FILE *fp, uint64_t *out_size);
 
 #endif /* BIN_IO_H */

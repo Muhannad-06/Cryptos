@@ -188,3 +188,26 @@ ErrorCode IO_enumSeek(FILE *fp, uint64_t offset)
     }
     return SUCCESS;
 }
+
+ErrorCode IO_enumFileSize(FILE *fp, uint64_t *out_size)
+{
+    if (fp == NULL || out_size == NULL)
+        return NULL_POINTER;
+
+    long current_pos = ftell(fp);
+    if (current_pos == -1L)
+        return ERROR_READ_FAILED;
+
+    if (fseek(fp, 0, SEEK_END) != 0)
+        return ERROR_READ_FAILED;
+
+    long size = ftell(fp);
+    if (size == -1L)
+        return ERROR_READ_FAILED;
+
+    if (fseek(fp, current_pos, SEEK_SET) != 0)
+        return ERROR_READ_FAILED;
+
+    *out_size = (uint64_t)size;
+    return SUCCESS;
+}
