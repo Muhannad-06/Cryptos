@@ -1,2 +1,6 @@
 # Cryptos
-A high-performance, tamper-evident file archiver and password vault written in low-level C
+Archive file format inspired by [ZIP](https://en.wikipedia.org/wiki/ZIP_%28file_format%29) and [keepass](https://keepass.info/).
+
+---
+# Archive Structure
+![Archive Structure](docs/structure.png)
