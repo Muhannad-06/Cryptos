@@ -77,8 +77,6 @@ void archive_destroy(Archive * archive);
 /* brief info about archive */
 char * archive_to_string(Archive * archive);
 
-/* add, update, delete operations */
-
 /*  Format functions */
 
 /*  write functions. */

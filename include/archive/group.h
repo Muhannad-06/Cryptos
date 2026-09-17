@@ -16,7 +16,7 @@ typedef struct Group{
     uint32_t last_modification_date;
     Vector *entries;
     Vector *fields; /* This vector is added for easier iteration. */
-    uint32_t group_id;
+    const uint32_t group_id;
     char* name;
     
 } Group ;
@@ -27,6 +27,7 @@ Group * group_create(Archive *archive, char *name);
 void group_destroy(Group * group);
 
 /* brief info about group */
+/* #TODO */
 char * group_to_string(Group * group);
 
 /* mutators */
