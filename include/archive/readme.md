@@ -85,7 +85,7 @@ _**set entry:**_ `field_set_entry(field, new_entry)` move field from entry to `n
 
 
 ### functions to write changes:
-update existing archive file or create new archive file: `write_archive(archive)`.\
-write a clean version of archive (a new file with erased history): `write_archive_clean(archive, new_file_name)` writes the archive data into a new file with name `new_file_name`.
+**_update existing archive file or create new archive file:_** `write_archive(archive)`.\
+**_write a clean version of archive (a new file with erased history):_** `write_archive_clean(archive, new_file_name)` writes the archive data into a new file with name `new_file_name`.
 
 ---
