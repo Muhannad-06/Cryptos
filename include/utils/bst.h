@@ -37,12 +37,12 @@ typedef struct{
 
 BST *bst_create();
 void bst_destroy(BST* bst);
-TNode *bst_find_parent(char *text);
-TNode *bst_find(char *text);
-int bst_contains(char *text);
-TNode *bst_insert_node(TNode *node);
-TNode *bst_insert(char *text, void *entity,TextType text_type, EntityType entity_type);
-ErrorCode bst_delete_node(TNode);
-ErrorCode bst_delete(char *text);
+TNode *bst_find_parent(BST* bst, char *text);
+TNode *bst_find(BST* bst, char *text);
+int bst_contains(BST* bst, char *text);
+TNode *bst_insert_node(BST* bst, TNode *node);
+TNode *bst_insert(BST* bst, char *text, void *entity,TextType text_type, EntityType entity_type);
+ErrorCode bst_delete_node(BST* bst, TNode* node);
+ErrorCode bst_delete(BST* bst, char *text);
 
 #endif
