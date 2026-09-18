@@ -189,7 +189,7 @@ uint64_t archive_size(Archive *archive){
         for(uint32_t j = 0; j<curr_fields->size; j++){
             Field *curr_field = vector_at(curr_fields, j);
 
-            TNode *curr_field_node = bst_find(curr_field->name);
+            TNode *curr_field_node = bst_find(all_fields, curr_field->name);
             if(curr_field_node != NULL){ 
                 if(!curr_field_node->entity){
                     error("archive size: bst node with null pointer entity.");
@@ -207,7 +207,7 @@ uint64_t archive_size(Archive *archive){
 
             } else {
                 fields_size += field_full_size(curr_field);
-                bst_insert(curr_field->name, curr_field, NAME, FIELD);
+                bst_insert(all_fields, curr_field->name, curr_field, NAME, FIELD);
             }
         }
     }

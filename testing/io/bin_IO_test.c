@@ -129,7 +129,7 @@ ErrorCode test_bin_nav(){
     status += assert("Initial position check", IO_u64Tell(nfp) == 0);
     
     /* Seeking 8 bytes to test cursor movement. */
-    status += assert("Seek to offset 8", IO_enumSeek(nfp, 8) == SUCCESS);
+    status += assert("Seek to offset 8", IO_enumSeek(nfp, 8, SEEK_SET) == SUCCESS);
     status += assert("Verify position after seek", IO_u64Tell(nfp) == 8);
 
     return (status == SUCCESS) ? SUCCESS : FAILURE;
