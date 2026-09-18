@@ -82,7 +82,7 @@ _**get string of brief field info:**_ `field_to_string(field)`.\
 **_To set field content:_** `field_set_content(field, type,  data)`.\
 _**set entry:**_ `field_set_entry(field, new_entry)` move field from entry to `new_entry`.
 **_set compression type_**: `field_set_compression(field, compression_type)` change field compression type.
-
+**_print field data_**: `print_field_data(field, file_stream)` print field content into file stream (you can use `stdout` to print it on terminal). _declared in_: `archive.h`
 
 ### functions to write changes:
 **_update existing archive file or create new archive file:_** `write_archive(archive)`.\
