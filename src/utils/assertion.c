@@ -2,16 +2,33 @@
 #include "../../include/utils/assertion.h"
 #include <stdio.h>
 
-int assertFileEqual(FILE *fp1, FILE *fp2){
+#include "utils/error.h"
+
+int assertFileEqual(char *msg, FILE *fp1, FILE *fp2){
+    if (!fp1 || !fp2 || !msg) {
+        error("assertFileEqual: null pointer");
+    }
+    // return cursor to each file's beginning.
+    rewind(fp1);
+    rewind(fp2);
+
     int c1;
     int c2;
 
-    while( ((c1 = fgetc(fp1)) != EOF) && ((c2 = fgetc(fp2)) != EOF) ){
-        if(c1 != c2){
-            return FAILURE;
+    for(;;){
+        c1 = getc(fp1);
+        c2 = getc(fp2);
+        if (c1 == c2) {
+            if (c1 == EOF) {
+                fprintf(stderr, "SUCCESS(files are equal): %s\n", msg);
+                return SUCCESS;
+            }
+        } else {
+            break;
         }
     }
-    return SUCCESS;
+    fprintf(stderr, "FAILURE(files are NOT equal): %s\n", msg);
+    return FAILURE;
 }
 
 int assert(char *msg, int st){
@@ -20,6 +37,6 @@ int assert(char *msg, int st){
         return FAILURE;
     }
     
-    fprintf(stderr, "SUCSESS: %s\n", msg);
+    fprintf(stderr, "SUCCESS: %s\n", msg);
     return SUCCESS;
 }

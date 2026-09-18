@@ -57,7 +57,7 @@ ErrorCode IO_enumPrintFile(FILE *dst, uint64_t offset, uint64_t size, FILE *src)
 uint64_t IO_u64Tell(FILE *fp);
 
 /* Moves the file cursor to an absolute byte offset from the beginning of the file */
-ErrorCode IO_enumSeek(FILE *fp, uint64_t offset);
+ErrorCode IO_enumSeek(FILE *fp, uint64_t offset, int whence);
 
 
 #endif /* BIN_IO_H */
