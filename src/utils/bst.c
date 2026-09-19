@@ -1,4 +1,5 @@
 #include "../../include/utils/bst.h"
+#include "utils/error.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -123,6 +124,11 @@ TNode *bst_insert_node(BST *bst, TNode *node) {
 }
 
 TNode *bst_insert(BST *bst, char *text, void *entity, TextType text_type, EntityType entity_type) {
+    if (bst_contains(bst, text)) {
+        // errorp("bst_insert: \"%s\" already exists in binary search tree", text);
+        /* NOTE: now if entities have the same name in archive, only one is in search tree */
+        return NULL;
+    }
     TNode *node = bst_node_create(text, entity, text_type, entity_type);
     if (!node) return NULL;
 
