@@ -26,8 +26,8 @@ Archive * archive_create(char *name, char *description, FILE *fp){
     archive->name = name;
     archive->description = description;
     archive->version = ARCHIVE_VERSION /* current project version */ ; 
-    archive->num_of_entries = 0;
-    archive->num_of_groups = 0; 
+    archive->entries->size = 0;
+    archive->groups->size = 0;
 
     /* archive size is initially 0 until the archive is written. */
     archive->size = 0; 
@@ -35,13 +35,108 @@ Archive * archive_create(char *name, char *description, FILE *fp){
     /* initialize num of changes. */
     archive->num_of_changes = 0; // initially 0 until it's written.
     
+    // initializing text search tree.
+    archive->search_tree = bst_create();
+    
     return archive;
 }
 
+// update search tree's data.
+ErrorCode search_tree_gen(Archive * archive) {
+    // ErrorCode status = SUCCESS;
+
+    /* clean old search tree */
+    bst_destroy(archive->search_tree);
+    archive->search_tree = bst_create();
+
+    // group data.
+    for (int i = 0; i < archive->groups->size; i++) {
+        Group * group = vector_at(archive->groups, i);
+        if (!group) {
+            error("search tree gen: null group pointer");
+        }
+        TNode *node = bst_insert(archive->search_tree, group->name, group, NAME, GROUP);
+        if (!node) {
+            // error("search tree gen: couldn't insert group: %s", group->name);
+        }
+    }
+    // entry data.
+    for (int i = 0; i < archive->entries->size; i++) {
+        Entry * entry = vector_at(archive->entries, i);
+        if (!entry) {
+            error("search tree gen: null entry pointer");
+        }
+        TNode *node = bst_insert(archive->search_tree, entry->name, entry, NAME, ENTRY);
+        if (!node) {
+            // error("search tree gen: couldn't insert entry: %s", entry->name);
+        }
+    }
+    // field data.
+    for (int i = 0;  i < (int)archive->fields->size; i++) {
+        Field * field = vector_at(archive->fields, i);
+        if (!field) {
+            error("search tree gen: null field pointer");
+        }
+        TNode *node = bst_insert(archive->search_tree, field->name, field, NAME, FIELD);
+        if (!node) {
+            // error("search tree gen: couldn't insert field: %s", field->name);
+        }
+        if (field->type == TEXT) {
+            node = bst_insert(archive->search_tree, field->content, field, CONTENT, FIELD);
+            if (!node) {
+                // error("search tree gen: couldn't insert field: %s", field->name);
+            }
+        }
+    }
+
+    // return (status == SUCCESS) ? SUCCESS : FAILURE;
+    return SUCCESS;
+}
+
+// find text function
+TNode *archive_find_entity(Archive *archive, char *entity_name) {
+    if (!archive || !entity_name) {
+        error("find_entity: null pointer");
+    }
+
+    TNode *node = bst_find(archive->search_tree, entity_name);
+    if (node->entity_type != FIELD && node->entity_type != ENTRY && node->entity_type != GROUP) {
+        error("find_entity: invalid entity type");
+    }
+    if (!node) {
+        errorp("archive_find_entity: \"%s\" not found", entity_name);
+    }
+    return node; /* NOTE: this function can return null if text is not found */
+}
+
+char *archive_find_entity_str(Archive *archive, char *entity_name) {
+    TNode *node = archive_find_entity(archive, entity_name);
+    if (!node) {
+        return NULL; /* NOTE: this function can return null if text is not found */
+    }
+    if (node->entity_type == FIELD) {
+        return field_to_string(node->entity);
+    } else if (node->entity_type == ENTRY) {
+        return entry_to_string(node->entity);
+    } else if (node->entity_type == GROUP) {
+        return group_to_string(node->entity);
+    }
+    return NULL;
+}
+
 void archive_destroy(Archive *archive){
-    for(size_t i = 0; i<archive->num_of_groups; i++){
-        group_destroy(vector_at(archive->groups, i));
-        // group_destroy handles destroying entries and fields.
+    /* deleting all entities.
+     * delete is safer than destroy as it removes pointers pointing to freed structs.
+     * delete functions do not affect the file until write_archive is called.
+     */
+    for (size_t i = 0; i < archive->fields->size; i++) {
+        field_delete(vector_at(archive->fields, i));
+    }
+    for (size_t i = 0; i < archive->entries->size; i++) {
+        entry_delete(vector_at(archive->entries, i));
+    }
+    for(size_t i = 0; i<archive->groups->size; i++){
+        group_delete(vector_at(archive->groups, i));
     }
     vector_destroy(archive->groups);
     vector_destroy(archive->entries);
@@ -95,7 +190,7 @@ char *archive_to_string(Archive *archive){
     char * string;
     asprintf(&string,
          "Archive \"%s\". version: %u. description: %s \n size: %u. number of groups: %u. number of entries: %u. number of fields: %u. \n number of changes: %u, is written: %u",
-        archive->name, archive->version, archive->description, (unsigned int) archive->size, archive->num_of_groups, archive->num_of_entries, (unsigned int) archive->fields->size, archive->num_of_changes, archive->written);
+        archive->name, archive->version, archive->description, (unsigned int) archive->size, archive->entries->size, archive->groups->size, (unsigned int) archive->fields->size, archive->num_of_changes, archive->written);
     if(!string){
         error("archive_to_string: failed.");
     }
@@ -164,6 +259,7 @@ Vector * archive_get_versions(Archive *archive){
 
 /* dynamic size calculation functions */
 
+/* NOTE: deprecated */
 /* calculated total archive size in write functions instead... */
 uint64_t archive_size(Archive *archive){
     if(!archive){
@@ -189,7 +285,7 @@ uint64_t archive_size(Archive *archive){
         for(uint32_t j = 0; j<curr_fields->size; j++){
             Field *curr_field = vector_at(curr_fields, j);
 
-            TNode *curr_field_node = bst_find(curr_field->name);
+            TNode *curr_field_node = bst_find(all_fields, curr_field->name);
             if(curr_field_node != NULL){ 
                 if(!curr_field_node->entity){
                     error("archive size: bst node with null pointer entity.");
@@ -200,14 +296,14 @@ uint64_t archive_size(Archive *archive){
                 if(curr_field->last_modification_date == curr_field_counted->last_modification_date){
                     continue;
                 } else{
-                    // field_destroy(curr_field_counted); // already freed in archvie_destroy.
+                    // field_destroy(curr_field_counted); // already freed in archive_destroy.
                     curr_field_node->entity = curr_field;
                     fields_size += field_full_size(curr_field);
                 }
 
             } else {
                 fields_size += field_full_size(curr_field);
-                bst_insert(curr_field->name, curr_field, NAME, FIELD);
+                bst_insert(all_fields, curr_field->name, curr_field, NAME, FIELD);
             }
         }
     }
@@ -436,7 +532,7 @@ ErrorCode write_directory(Archive *archive){
     FILE *fp = archive->fp;
     /* check if file is open and appendable. */
     if(fp == NULL){
-        errorp("could not write drectory: %s. file not open.", archive->name);
+        errorp("could not write directory: %s. file not open.", archive->name);
         return FAILURE;
     }
 
@@ -455,7 +551,7 @@ ErrorCode write_directory(Archive *archive){
     
     /* fields that should be updated before writing directory. 
     * - archive size. -> in write_field, write_field_local_header.
-    * - archvie num of changes. -> in write_archive.
+    * - archive num of changes. -> in write_archive.
     */
 
     /* writing directory header. */
@@ -475,13 +571,13 @@ ErrorCode write_directory(Archive *archive){
     archive->directory_offset = init_pos;
 
     /* writing groups headers. */
-    status+= IO_enumWriteU32(fp, archive->num_of_groups);
-    for(int i = 0; i < archive->num_of_groups; i++){
+    status+= IO_enumWriteU32(fp, archive->groups->size);
+    for(int i = 0; i < archive->groups->size; i++){
         status += write_group_header(vector_at(archive->groups, i));
     }
     /* writing entries headers. */
-    status+= IO_enumWriteU32(fp, archive->num_of_entries);
-    for(int i = 0; i < archive->num_of_entries; i++){
+    status+= IO_enumWriteU32(fp, archive->entries->size);
+    for(int i = 0; i < archive->entries->size; i++){
         status += write_entry_header(vector_at(archive->entries, i));
     }
     /* writing fields headers*/

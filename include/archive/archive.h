@@ -9,6 +9,7 @@
 #include "group.h"
 #include "entry.h"
 #include"field.h"
+#include "../utils/bst.h"
 
 /* Archive current version */
 #define ARCHIVE_VERSION 0
@@ -50,21 +51,17 @@ typedef struct Archive{
     Vector *groups;
     Vector *entries;
     Vector *fields;
-    /* vectors to collect entities that have changes to be written. */
-    // Vector *groups_updated;
-    // Vector *entries_updated;/* groups & entries are not necessary as there info would be written in the directory in each change. */
     uint32_t creation_date;
     uint32_t last_modification_date;
-    Vector *fields_updated;
+    Vector *fields_updated; /* holds fields to be written */
     uint32_t num_of_changes; /* represents number of directories in the archive */
     /* #NOTE: num_of_changes should be increased before each archive write operation. 
     * It is increased in the write_archive function.
     */
     char* name;
     char* description;
+    BST* search_tree;
     uint16_t version;
-    uint16_t num_of_entries;
-    uint16_t num_of_groups;
     uint8_t written; /* a boolean value indicates if this version or current changes is written into the archive */
 
 } Archive;
@@ -73,6 +70,9 @@ typedef struct Archive{
 
 Archive * archive_create(char *name, char *description, FILE *fp);
 void archive_destroy(Archive * archive);
+ErrorCode search_tree_gen(Archive *archive);
+TNode *archive_find_entity(Archive *archive, char *entity_name);
+char *archive_find_entity_str(Archive *archive, char *entity_name);
 
 /* brief info about archive */
 char * archive_to_string(Archive * archive);

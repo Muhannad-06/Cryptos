@@ -12,7 +12,7 @@ typedef struct Entry{
     uint32_t creation_date;
     uint32_t last_modification_date;
     Group * group;
-    const uint32_t entry_id;
+    uint32_t entry_id;
     char* name;
 
     Vector *fields;
@@ -23,7 +23,8 @@ typedef struct Entry{
 /* Functions */
 
 Entry * entry_create(Group *group, char* name);
-void entry_destroy(Entry * entry);
+
+ErrorCode entry_destroy(Entry *entry);
 
 /* brief info about entry */
 /* #TODO */
