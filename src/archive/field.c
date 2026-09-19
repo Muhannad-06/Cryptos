@@ -4,10 +4,15 @@
 #include <time.h>
 
 Field * field_create(Entry *entry, FieldType type, char* name){
+    /* handle null pointer */
+    if (!entry || !name) {
+        error("field_create: null pointer");
+    }
+
     Field * field = malloc(sizeof(Field));
     
     if(!field){
-        error("field_create: null pointer");
+        error("field_create: could not allocate field");
     }
     
     field->entry = entry;
@@ -38,14 +43,67 @@ Field * field_create(Entry *entry, FieldType type, char* name){
 void field_destroy(Field *field) {
     if (!field) return;
 
-    // if (field->type == TEXT || field->type == PASSWORD) {
-    //     free(field->content);
-    // } else if (field->type == BINARY) {
-    //     fclose((FILE *)field->content);
-    // }
-    //
+    if (field->type == TEXT || field->type == PASSWORD) {
+        // free(field->content);
+    } else if (field->type == BINARY) {
+        fclose((FILE *)field->content);
+    }
+
     // free(field->name);
     free(field);
+}
+
+ErrorCode field_delete(Field *field){
+    if(!field || !(field->entry) || !(field->entry->group) || !(field->entry->group->archive)){
+        errorp("field_delete: null pointer");
+        return NULL_POINTER;
+    }
+
+    Entry * entry = field->entry;
+    Group * group = entry->group;
+    Archive * archive = group->archive;
+
+    ErrorCode status = SUCCESS;
+
+    // remove from entry
+    vector_remove_value(entry->fields, field);
+    // remove from group.
+    vector_remove_value(group->fields, field);
+    // remove from archive
+    vector_remove_value(archive->fields, field);
+    vector_remove_value(archive->fields_updated, field);
+
+    status+=field_update(field);
+    /* manually updated fields because update_parents function adds the field to fields_updated vector which causes accessing a freed structure. */
+    entry->last_modification_date = time(NULL);
+    group->last_modification_date = time(NULL);
+    archive->last_modification_date = time(NULL);
+    archive->written = 0;
+
+    /* free memory */
+    field_destroy(field);
+
+    return (status !=SUCCESS )? FAILURE:SUCCESS;
+}
+
+char * field_to_string(Field * field) {
+    if(!field) {
+        error("field_to_string: null pointer.");
+    }
+    char *type_str;
+    if (field->type == TEXT) {
+        type_str = "Text";
+    } else if (field->type == PASSWORD) {
+        type_str = "Password";
+    } else if (field->type == BINARY) {
+        type_str = "Binary";
+    } else {
+        error("field_to_string: unknown type.");
+    }
+
+    char *string;
+    asprintf(&string, "Field Name: %s, content type: %s, Parent Entry: %s", field->name, type_str, field->entry->name);
+    return string;
 }
 
 /* calculate crc */
@@ -79,6 +137,7 @@ ErrorCode field_update_parents(Field *field){
         vector_push_back(archive->fields_updated, field);
     }
 
+    search_tree_gen(archive);
     return SUCCESS;
 }
 
@@ -155,25 +214,5 @@ ErrorCode field_set_entry(Field *field, Entry *new_entry){
 
     status+=field_update(field);
     status+=field_update_parents(field);
-    return (status !=SUCCESS )? FAILURE:SUCCESS;
-}
-
-ErrorCode field_delete(Field *field){
-    if(!field || !(field->entry) || !(field->entry->group) || !(field->entry->group->archive)){
-        errorp("field_set_entry: null pointer");
-        return NULL_POINTER;
-    }
-    ErrorCode status = SUCCESS;
-    // remove from archive
-    vector_remove_value(field->entry->group->archive->fields, field);
-    // remove from group.
-    vector_remove_value(field->entry->group->fields, field);
-    // remove from entry
-    vector_remove_value(field->entry->fields, field);
-
-    status+=field_update(field);
-    status+=field_update_parents(field);
-    field_destroy(field);
-
     return (status !=SUCCESS )? FAILURE:SUCCESS;
 }
