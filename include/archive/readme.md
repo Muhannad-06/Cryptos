@@ -95,6 +95,8 @@ _**set entry:**_ `field_set_entry(field, new_entry)` move field from entry to `n
 **_write a clean version of archive (a new file with erased history):_** `write_archive_clean(archive, new_file_name)` writes the archive data into a new file with name `new_file_name`.
 
 ### functions for history feature:
-**_Get a list of archive versions:_** `archive_get_versions(archive)` returns a vector of archive entities (a vector of (Archive *)). Last element of the vector is current archive version.
+**_Get a list of archive versions:_** `archive_get_versions(archive)` returns a vector of archive entities (a vector of (Archive *)). Last element of the vector is current archive version./
+
 **_Get archive of certain number of versions backward_** `archive_get_backward(archive, steps)`.
+
 ---
