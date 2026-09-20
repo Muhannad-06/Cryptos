@@ -2,6 +2,7 @@
 #define GROUP_H
 
 #include <stdint.h>
+#include "../types.h"
 
 typedef struct Archive Archive;
 typedef struct Entry Entry;
@@ -18,15 +19,22 @@ typedef struct Group{
     uint32_t group_id;
     char* name;
     
-
 } Group ;
 
-/* #TODO: Functions*/
+/* Functions */
 
 Group * group_create(Archive *archive, char *name);
-void group_destroy(Group * group);
+
+ErrorCode group_destroy(Group *group);
 
 /* brief info about group */
+/* #TODO */
 char * group_to_string(Group * group);
+
+/* mutators */
+ErrorCode group_update_parents(Group *group);
+ErrorCode group_update(Group *group);
+ErrorCode group_set_name(Group *group, char *name);
+ErrorCode group_delete(Group *group);
 
 #endif

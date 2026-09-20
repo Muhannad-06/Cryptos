@@ -181,14 +181,6 @@ uint64_t IO_u64Tell(FILE *fp)
     return (uint64_t)pos;
 }
 
-ErrorCode IO_enumSeek(FILE *fp, uint64_t offset)
-{
-    if (fseek(fp, (long)offset, SEEK_SET) != 0) {
-        return FAILURE; // Seek failed
-    }
-    return SUCCESS;
-}
-
 ErrorCode IO_enumFileSize(FILE *fp, uint64_t *out_size)
 {
     if (fp == NULL || out_size == NULL)
@@ -210,4 +202,11 @@ ErrorCode IO_enumFileSize(FILE *fp, uint64_t *out_size)
 
     *out_size = (uint64_t)size;
     return SUCCESS;
+}
+
+ErrorCode IO_enumSeek(FILE *fp, uint64_t offset, int whence /* default is SEEK_SET*/) {
+  if (fseek(fp, (long)offset, whence) != 0) {
+    return FAILURE; // Seek failed
+  }
+  return SUCCESS;
 }

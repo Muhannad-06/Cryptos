@@ -9,6 +9,7 @@
 #include "group.h"
 #include "entry.h"
 #include"field.h"
+#include "../utils/bst.h"
 
 /* Archive current version */
 #define ARCHIVE_VERSION 0
@@ -27,17 +28,17 @@
 #define MAX_CHANGES 4294967296 // maximum number of archive directories, for each change in archive a new directory is written.
 
 /* Magic Number */
-#define MAGIC_NUMBER  0x4D4D3333  /* MM33 */
+#define MAGIC_NUMBER  0x33334D4D /* in file it is reversed by little endian to be MM33 */
 
 /* functions to calculate size of parts that have variable length */
 uint64_t group_header_size (Group * group);
 uint64_t entry_header_size(Entry * entry);
 uint64_t field_header_size(Field * field);
 uint64_t local_field_header_size(Field * field);
-uint64_t field_size(Field * field);
+uint64_t field_full_size(Field * field);
 uint64_t directory_size(Archive * archive);
 
-/* #TODO: archive size calculation */
+/* archive size calculation */
 uint64_t archive_size(Archive * archive);
     
 
@@ -50,31 +51,31 @@ typedef struct Archive{
     Vector *groups;
     Vector *entries;
     Vector *fields;
-    /* vectors to collect entities that have changes to be written. */
-    // Vector *groups_updated;
-    // Vector *entries_updated;/* groups & entries are not necessary as there info would be written in the directory in each change. */
     uint32_t creation_date;
     uint32_t last_modification_date;
-    Vector *fields_updated;
+    Vector *fields_updated; /* holds fields to be written */
     uint32_t num_of_changes; /* represents number of directories in the archive */
+    /* #NOTE: num_of_changes should be increased before each archive write operation. 
+    * It is increased in the write_archive function.
+    */
     char* name;
     char* description;
+    BST* search_tree;
     uint16_t version;
-    uint16_t num_of_entries;
-    uint16_t num_of_groups;
     uint8_t written; /* a boolean value indicates if this version or current changes is written into the archive */
 
 } Archive;
 
-/* #TODO: Memory Functions*/
+/* Memory Functions*/
 
-Archive * archive_create(char *name, char *description);
+Archive * archive_create(char *name, char *description, FILE *fp);
 void archive_destroy(Archive * archive);
+ErrorCode search_tree_gen(Archive *archive);
+TNode *archive_find_entity(Archive *archive, char *entity_name);
+char *archive_find_entity_str(Archive *archive, char *entity_name);
 
 /* brief info about archive */
 char * archive_to_string(Archive * archive);
-
-/* #TODO: add, update, delete operations */
 
 /*  Format functions */
 
@@ -88,17 +89,22 @@ ErrorCode write_field(Field * field); /* write both local header & field content
 ErrorCode write_archive(Archive * archive); /* create or update archive content. */
 ErrorCode write_archive_clean(Archive * archive, char *new_file_name); /* rewrite archive with clean history. */
 
-/* <<<<<<< Read Functions (Updated -> Some Changes in the Attributes and Return Types) */
-Group  *read_group_header (Archive *archive, FILE *fp, uint64_t offset);
-Entry  *read_entry_header (Archive *archive, FILE *fp, uint64_t offset);
-Field  *read_field_header (Archive *archive, FILE *fp, uint64_t offset);
- 
-Group **read_group_headers(Archive *archive, FILE *fp, uint64_t n_groups_offset,  uint32_t *out_count);
-Entry **read_entry_headers(Archive *archive, FILE *fp, uint64_t n_entries_offset, uint32_t *out_count);
-Field **read_field_headers(Archive *archive, FILE *fp, uint64_t n_fields_offset,  uint32_t *out_count);
- 
-ErrorCode read_directory(Archive * archive, FILE *fp, uint64_t directory_offset);
-ErrorCode read_archive(Archive * archive, FILE *fp); // read directory.
-void print_field_data(Field * field, FILE * stream); // print field data into stream.
+/* #TODO: read functions. */
+Group * read_group_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse group data.
+Group ** read_group_headers(Archive * archive, FILE *fp, uint64_t n_groups_offset); // seek to number of groups section offset and start parsing groups.
+Entry * read_entry_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse entry data.
+Entry ** read_entry_headers(Archive * archive, FILE *fp, uint64_t n_entries_offset); // seek to number of entries section offset and start parsing groups.
+Field * read_field_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse field data.
+Entry ** read_field_headers(Archive * archive, FILE *fp, uint64_t n_fields_offset); // seek to number of fields section offset and start parsing groups.
+Archive * read_directory(FILE *fp, uint64_t directory_offset);
+Archive * read_archive(FILE *fp); // read directory.
+ErrorCode print_field_data(Field * field, FILE * stream); // print field data into stream.
 
+/* History functions. */
+Archive * archive_get_backward(Archive * archive, uint32_t steps);
+Vector * archive_get_versions(Archive *archive);
+
+/* mutators */
+ErrorCode archive_set_name(Archive *archive, char *name);
+ErrorCode archive_set_description(Archive *archive, char *description);
 #endif
