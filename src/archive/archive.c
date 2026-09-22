@@ -12,6 +12,7 @@ Archive * archive_create(char *name, char *description){
     Archive * archive = malloc(sizeof(Archive));
     if(!archive) return NULL;
     
+    archive->creation_date = (uint64_t) time(NULL);
     archive->directory_offset = sizeof(uint32_t) + sizeof(uint64_t); /* magic 4 bytes + the offset location section */
     archive->fp = malloc(sizeof(FILE)); // creating file pointer, opening the file and writing data is in archive_f
     archive->groups = vector_create();
