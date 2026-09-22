@@ -1,6 +1,7 @@
 #ifndef ENTRY_H
 #define ENTRY_H
 
+#include "../types.h"
 #include <stdint.h>
 
 typedef struct Group Group;
@@ -19,12 +20,20 @@ typedef struct Entry{
 } Entry;
 
 
-/* #TODO: Functions */
+/* Functions */
 
 Entry * entry_create(Group *group, char* name);
-void entry_destroy(Entry * entry);
+
+ErrorCode entry_destroy(Entry *entry);
 
 /* brief info about entry */
+/* #TODO */
 char * entry_to_string(Entry * entry);
 
+/* mutators */
+ErrorCode entry_update_parents(Entry *entry);
+ErrorCode entry_update(Entry *entry);
+ErrorCode entry_set_name(Entry *entry, char *name);
+ErrorCode entry_set_group(Entry *entry, Group *new_group);
+ErrorCode entry_delete(Entry *entry);
 #endif
