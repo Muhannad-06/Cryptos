@@ -204,7 +204,7 @@ ErrorCode IO_enumFileSize(FILE *fp, uint64_t *out_size)
     return SUCCESS;
 }
 
-ErrorCode IO_enumSeek(FILE *fp, uint64_t offset, int whence /* default is SEEK_SET*/) {
+ErrorCode IO_enumSeek(FILE *fp, uint64_t offset, int whence) {
   if (fseek(fp, (long)offset, whence) != 0) {
     return FAILURE; // Seek failed
   }

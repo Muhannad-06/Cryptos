@@ -17,14 +17,9 @@ Archive * archive_create(char *name, char *description, FILE *fp){
         error("archive_create: couldn't allocate memory for archive");
     }
     
-<<<<<<< HEAD
     archive->creation_date = (uint64_t) time(NULL);
     archive->directory_offset = sizeof(uint32_t) + sizeof(uint64_t); /* magic 4 bytes + the offset location section */
     archive->fp = malloc(sizeof(FILE)); // creating file pointer, opening the file and writing data is in archive_f
-=======
-    archive->directory_offset = 0; // initially 0 until it's written.
-    archive->fp = fp;
->>>>>>> b3814e6977793f25f053bd59c636ca879ab2dfba
     archive->groups = vector_create();
     archive->entries = vector_create();
     archive->fields = vector_create();
@@ -215,7 +210,7 @@ Archive * archive_get_backward(Archive * archive, uint32_t steps){
     }
 
     for(uint32_t i = 0; i < steps; i++){
-        archive = read_directory(archive->fp, archive->prev_dir_offset);
+        archive = read_directory(archive, archive->fp, archive->prev_dir_offset);
         if(!archive){
             error("archive_get_backward: couldn't get backward version by %u steps", steps);
         }
@@ -762,7 +757,23 @@ ErrorCode write_archive_clean(Archive * archive, char *new_file_name){
 }
 
 
-/* <<<<<<<<<<<<<<<<<<<<<<<<< Read functions >>>>>>>>>>>>>>>>>>>>>> */
+/* <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Read functions >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> */
+
+/* Helper function to expect a specific magic number 
+*       Why Static? As it won't be used outside this file */
+static ErrorCode expect_magic(FILE *fp, const char *context) {
+    uint32_t magic = 0;
+    if (IO_enumReadU32(fp, &magic) != SUCCESS) {
+        errorp("expect_magic: could not read magic number for %s", context);
+        return ERROR_READ_FAILED;
+    }
+    if (magic != MAGIC_NUMBER) {
+        errorp("expect_magic: bad magic number for %s", context);
+        return ERROR_READ_FAILED;
+    }
+    return SUCCESS;
+}
+
 Group *read_group_header(Archive *archive, FILE *fp, uint64_t offset)
 {
     Group *group;
@@ -774,7 +785,7 @@ Group *read_group_header(Archive *archive, FILE *fp, uint64_t offset)
         return NULL;
     }
  
-    if (IO_enumSeek(fp, offset) != SUCCESS) {
+    if (IO_enumSeek(fp, offset, SEEK_SET) != SUCCESS) {
         errorp("could not seek to group header at offset %llu.",
                (unsigned long long)offset);
         return NULL;
@@ -811,24 +822,28 @@ Group *read_group_header(Archive *archive, FILE *fp, uint64_t offset)
     return group;
 }
 
-Group ** read_group_headers(Archive * archive, FILE *fp, uint64_t n_groups_offset){
-    /* seek to number of groups section. */
+Group ** read_group_headers(Archive * archive, FILE *fp, uint64_t n_groups_offset, uint32_t *out_count){
     IO_enumSeek(fp, n_groups_offset, SEEK_SET);
 
-    uint32_t n;
-    /* #TODO: parse number of groups into n */
+    uint32_t n = 0;
+    if (IO_enumReadU32(fp, &n) != SUCCESS) {
+        errorp("could not read the number of groups.");
+        return NULL;
+    }
 
-    // groups array
+    if (n == 0) {
+        if (out_count) *out_count = 0;
+        return NULL;
+    }
+
     Group ** groups = malloc(sizeof(Group *) * n);
     
-    /* parse groups data. */
-    
-    for(int i = 0; i < n; i++){
+    for(uint32_t i = 0; i < n; i++){
         Group * group = read_group_header(archive, fp, IO_u64Tell(fp));
         groups[i] = group;
     }
  
-    archive->num_of_groups = n;
+    archive->groups->size = n;
     if (out_count) *out_count = n;
     return groups;
 }
@@ -845,7 +860,7 @@ Entry *read_entry_header(Archive *archive, FILE *fp, uint64_t offset)
         return NULL;
     }
  
-    if (IO_enumSeek(fp, offset) != SUCCESS) {
+    if (IO_enumSeek(fp, offset, SEEK_SET) != SUCCESS) {
         errorp("could not seek to entry header at offset %llu.",
                (unsigned long long)offset);
         return NULL;
@@ -898,7 +913,7 @@ Entry **read_entry_headers(Archive *archive, FILE *fp,
     if (out_count) *out_count = 0;
     if (!archive || !fp) return NULL;
  
-    if (IO_enumSeek(fp, n_entries_offset) != SUCCESS) {
+    if (IO_enumSeek(fp, n_entries_offset, SEEK_SET) != SUCCESS) {
         errorp("could not seek to the number of entries.");
         return NULL;
     }
@@ -907,7 +922,7 @@ Entry **read_entry_headers(Archive *archive, FILE *fp,
         return NULL;
     }
     if (n == 0) {
-        archive->num_of_entries = 0;
+        archive->groups->size = 0;
         return NULL;
     }
  
@@ -927,7 +942,7 @@ Entry **read_entry_headers(Archive *archive, FILE *fp,
         entries[i] = entry;
     }
  
-    archive->num_of_entries = n;
+    archive->groups->size = n;
     if (out_count) *out_count = n;
     return entries;
 }
@@ -941,25 +956,16 @@ Field *read_field_header(Archive *archive, FILE *fp, uint64_t offset)
     uint64_t compressed_size = 0, size = 0, field_offset = 0;
     char *name = NULL;
  
-    if (!archive || !fp) {
-        errorp("could not read field header. NULL pointer.");
-        return NULL;
-    }
+    if (!archive || !fp) return NULL;
  
-    if (IO_enumSeek(fp, offset) != SUCCESS) {
-        errorp("could not seek to field header at offset %llu.",
-               (unsigned long long)offset);
-        return NULL;
-    }
- 
-    if (expect_magic(fp, "field header") != SUCCESS)
-        return NULL;
+    if (IO_enumSeek(fp, offset, SEEK_SET) != SUCCESS) return NULL;
+    if (expect_magic(fp, "field header") != SUCCESS) return NULL;
  
     if (IO_enumReadU32(fp, &entry_id)        != SUCCESS ||
         IO_enumReadU16(fp, &compression)     != SUCCESS ||
         IO_enumReadU64(fp, &compressed_size) != SUCCESS ||
         IO_enumReadU64(fp, &size)            != SUCCESS ||
-        IO_enumReadU64(fp, &field_offset)    != SUCCESS ||
+        IO_enumReadU64(fp, &field_offset)    != SUCCESS || 
         IO_enumReadU32(fp, &crc)             != SUCCESS ||
         IO_enumReadU32(fp, &creation)        != SUCCESS ||
         IO_enumReadU32(fp, &last_mod)        != SUCCESS ||
@@ -968,49 +974,30 @@ Field *read_field_header(Archive *archive, FILE *fp, uint64_t offset)
         return NULL;
     }
  
-    if (read_prefixed_string(fp, &name) != SUCCESS) {
-        errorp("could not read field name.");
-        return NULL;
-    }
+    if (read_prefixed_string(fp, &name) != SUCCESS) return NULL;
  
-    if (type != TEXT && type != PASSWORD && type != BINARY) {
-        errorp("field '%s' has an unknown type %u.", name, type);
-        free(name);
-        return NULL;
-    }
-    if (compression != NON_COMPRESSED && compression != DEFLATE) {
-        errorp("field '%s' has an unknown compression method %u.", name, compression);
-        free(name);
-        return NULL;
-    }
- 
-    /* resolve the owning entry; entries must be parsed first. */
     entry = archive_find_entry(archive, entry_id);
     if (!entry) {
-        errorp("field '%s' references unknown entry %u.", name, entry_id);
         free(name);
         return NULL;
     }
  
-    /* field_create() registers the field in entry/group/archive vectors.
-     * Its own offset bookkeeping is overwritten right after. */
-    field = field_create(entry, field_offset, type, name);
+    field = field_create(entry, type, name);
     if (!field) {
         free(name);
-        errorp("could not allocate field while reading.");
         return NULL;
     }
  
     field->name = name;
-    field->offset = field_offset;
     field->compression = (CompressionType)compression;
     field->compressed_size = compressed_size;
     field->size = size;
+    field->offset = field_offset; /* Map the read offset */
     field->crc = crc;
     field->creation_date = creation;
     field->last_modification_date = last_mod;
     field->type = (FieldType)type;
-    field->content = NULL;   /* content stays on disk until asked for. */
+    field->content = NULL;
  
     return field;
 }
@@ -1024,7 +1011,7 @@ Field **read_field_headers(Archive *archive, FILE *fp,
     if (out_count) *out_count = 0;
     if (!archive || !fp) return NULL;
  
-    if (IO_enumSeek(fp, n_fields_offset) != SUCCESS) {
+    if (IO_enumSeek(fp, n_fields_offset, SEEK_SET) != SUCCESS) {
         errorp("could not seek to the number of fields.");
         return NULL;
     }
@@ -1055,15 +1042,110 @@ Field **read_field_headers(Archive *archive, FILE *fp,
     return fields;
 }
 
-Archive * read_directory(FILE *fp, uint64_t directory_offset){
-    // seek to the directory.
-    IO_enumSeek(fp, directory_offset, SEEK_SET);
-
-    Archive * archive = archive_create("", "", fp);
-    // # TODO parse data into archive
-    
-
-    return archive;
+ErrorCode read_directory(Archive *archive, FILE *fp, uint64_t directory_offset)
+{
+    uint16_t version = 0;
+    uint64_t archive_size = 0, prev_dir_offset = 0;
+    uint32_t creation = 0, last_mod = 0, num_of_changes = 0;
+    uint32_t n_groups = 0, n_entries = 0, n_fields = 0;
+    char *name = NULL, *description = NULL;
+    Group **groups = NULL;
+    Entry **entries = NULL;
+    Field **fields = NULL;
+ 
+    if (!archive || !fp) {
+        errorp("could not read directory. NULL pointer.");
+        return NULL_POINTER;
+    }
+ 
+    if (IO_enumSeek(fp, directory_offset, SEEK_SET) != SUCCESS) {
+        errorp("could not seek to the directory at offset %llu.",
+               (unsigned long long)directory_offset);
+        return ERROR_READ_FAILED;
+    }
+ 
+    if (expect_magic(fp, "directory") != SUCCESS)
+        return ERROR_READ_FAILED;
+ 
+    if (IO_enumReadU16(fp, &version)         != SUCCESS ||
+        IO_enumReadU64(fp, &archive_size)    != SUCCESS ||
+        IO_enumReadU32(fp, &creation)        != SUCCESS ||
+        IO_enumReadU32(fp, &last_mod)        != SUCCESS ||
+        IO_enumReadU32(fp, &num_of_changes)  != SUCCESS ||
+        IO_enumReadU64(fp, &prev_dir_offset) != SUCCESS) {
+        errorp("could not read the directory header.");
+        return ERROR_READ_FAILED;
+    }
+ 
+    if (version > ARCHIVE_VERSION) {
+        errorp("archive file version %u is newer than the supported version %u.",
+               version, (unsigned)ARCHIVE_VERSION);
+        return FAILURE;
+    }
+ 
+    /* Start from a clean object: the caller may hand us an archive that
+     * still holds the default root group or an older directory. */
+    archive_reset(archive);
+ 
+    archive->fp = fp;
+    archive->directory_offset = directory_offset;
+    archive->prev_dir_offset = prev_dir_offset;
+    archive->version = version;
+    archive->creation_date = creation;
+    archive->last_modification_date = last_mod;
+    archive->num_of_changes = num_of_changes;
+ 
+    /* The three sections are stored back to back, so after each call the
+     * cursor already sits on the next "number of X" counter. */
+    groups = read_group_headers(archive, fp, IO_u64Tell(fp), &n_groups);
+    if (n_groups > 0 && !groups) {
+        errorp("could not read the group headers.");
+        return ERROR_READ_FAILED;
+    }
+ 
+    entries = read_entry_headers(archive, fp, IO_u64Tell(fp), &n_entries);
+    if (n_entries > 0 && !entries) {
+        errorp("could not read the entry headers.");
+        free(groups);
+        return ERROR_READ_FAILED;
+    }
+ 
+    fields = read_field_headers(archive, fp, IO_u64Tell(fp), &n_fields);
+    if (n_fields > 0 && !fields) {
+        errorp("could not read the field headers.");
+        free(groups);
+        free(entries);
+        return ERROR_READ_FAILED;
+    }
+ 
+    /* the lookup arrays were only needed to detect failures. */
+    free(groups);
+    free(entries);
+    free(fields);
+ 
+    if (read_prefixed_string(fp, &name) != SUCCESS) {
+        errorp("could not read the archive name.");
+        return ERROR_READ_FAILED;
+    }
+    if (read_prefixed_string(fp, &description) != SUCCESS) {
+        errorp("could not read the archive description.");
+        free(name);
+        return ERROR_READ_FAILED;
+    }
+ 
+    free(archive->name);
+    free(archive->description);
+    archive->name = name;
+    archive->description = description;
+ 
+    /* Set last, because group_create()/field_create() touch these while
+     * the records are being parsed. */
+    archive->groups->size = n_groups;
+    archive->entries->size = n_entries;
+    archive->size = archive_size;
+    archive->written = 1;   /* nothing pending: we just loaded from disk. */
+ 
+    return SUCCESS;
 }
 
 ErrorCode read_archive(Archive *archive, FILE *fp)
@@ -1079,7 +1161,7 @@ ErrorCode read_archive(Archive *archive, FILE *fp)
  
     /* the archive must start with MM33. Seek explicitly: 
      *   we cannot assume the caller left the cursor at the beginning */
-    if (IO_enumSeek(fp, 0) != SUCCESS) {
+    if (IO_enumSeek(fp, 0, SEEK_SET) != SUCCESS) {
         errorp("could not seek to the start of the archive");
         return ERROR_READ_FAILED;
     }
@@ -1093,7 +1175,7 @@ ErrorCode read_archive(Archive *archive, FILE *fp)
     }
  
     /* the last 8 bytes hold the offset of the newest directory. */
-    if (IO_enumFileSize(fp, &file_size) != SUCCESS) {
+    if (IO_u64FileSize(fp, &file_size) != SUCCESS) {
         errorp("could not read archive. could not get file size.");
         return ERROR_READ_FAILED;
     }
@@ -1103,7 +1185,7 @@ ErrorCode read_archive(Archive *archive, FILE *fp)
         return ERROR_READ_FAILED;
     }
  
-    if (IO_enumSeek(fp, file_size - OFFSET_SIZE) != SUCCESS)
+    if (IO_enumSeek(fp, file_size - OFFSET_SIZE, SEEK_SET) != SUCCESS)
         return ERROR_READ_FAILED;
  
     if (IO_enumReadU64(fp, &directory_offset) != SUCCESS)
