@@ -156,10 +156,15 @@ ErrorCode test_write(){
 ErrorCode test_read(){
     /* NOTE: write test must work before this test */
     ErrorCode status = SUCCESS;
-    archive_read = read_archive(fp_tst);
+    archive_read = archive_create(archive->name, archive->description, fp_tst);
 
     if (archive_read == NULL) {
-        errorp("archive read returned null.");
+        errorp("archive_create returned null.");
+        return FAILURE;
+    }
+
+    if (read_archive(archive_read, fp_tst) != SUCCESS) {
+        errorp("archive read failed.");
         return FAILURE;
     }
 
@@ -173,13 +178,13 @@ ErrorCode test_read(){
     status += assert("check archive description", strcmp(archive->description, archive_read->description) == 0);
 
     /* groups */
-    group_read = (Group *) archive_find_entity(archive_read, group->name);
+    group_read = (Group *) archive_find_entity(archive_read, group->name)->entity;
     status += assert("check if group exists", group_read != NULL); /* NOTE: this test depends on searching. */
     /* entries */
-    entry_read = (Entry *) archive_find_entity(archive_read, entry->name);
+    entry_read = (Entry *) archive_find_entity(archive_read, entry->name)->entity;
     status += assert("check if entry exists", entry_read != NULL); /* NOTE: this test depends on searching. */
     /* fields */
-    field_read = (Field *) archive_find_entity(archive_read, field->name);
+    field_read = (Field *) archive_find_entity(archive_read, field->name)->entity;
     status += assert("check if field exists", field_read != NULL); /* NOTE: this test depends on searching. */
     status += assert("check if field content is same", strcmp(field->content, field_read->content) == 0);
 
@@ -194,7 +199,7 @@ ErrorCode test_history() {
     Archive *version0 = vector_at(versions, 0);
 
     // assert version data
-    Entry *old_group = vector_at(version0->groups, 0);
+    Group *old_group = vector_at(version0->groups, 0);
     Entry *old_entry = vector_at(version0->entries, 0);
     Field *old_field = vector_at(version0->fields, 0);
     assert("check group old name", strcmp(old_group->name, "test_group") == 0);
@@ -220,11 +225,11 @@ int main(){
     printf("\n**** Checking archive writing ****\n");
     assert("**** check archive writing ****", test_write() == SUCCESS);
 
-    // printf("\n**** Checking archive read ****\n");
-    // assert("**** check archive read ****", test_read() == SUCCESS);
+    printf("\n**** Checking archive read ****\n");
+    assert("**** check archive read ****", test_read() == SUCCESS);
 
-    // printf("\n**** Checking history feature ****\n");
-    // assert("**** check history feature ****", test_history() == SUCCESS);
+    printf("\n**** Checking history feature ****\n");
+    assert("**** check history feature ****", test_history() == SUCCESS);
 
     clean();
 }

@@ -9,14 +9,14 @@ typedef struct Entry Entry;
 typedef struct Archive Archive;
 typedef struct Group Group;
 
-typedef enum : uint16_t
+typedef enum
 {
     TEXT = 0,
     PASSWORD = 1,
     BINARY = 2, // file
 } FieldType;
 
-typedef enum : uint16_t
+typedef enum
 {
     NON_COMPRESSED = 0,
     DEFLATE = 1,

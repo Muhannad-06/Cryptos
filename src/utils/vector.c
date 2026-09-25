@@ -25,7 +25,7 @@ Vector *vector_copy(Vector *src){
         
         void **sp = src->data;
         void **np = copy->data;
-        for(int i = 0; i<src->size ; i++){
+        for(size_t i = 0; i<src->size ; i++){
             if(*sp == NULL){
                 sp++;
                 continue;
