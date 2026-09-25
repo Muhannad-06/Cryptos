@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 
 /* memory functions. */
 Archive * archive_create(char *name, char *description, FILE *fp){
@@ -18,8 +19,8 @@ Archive * archive_create(char *name, char *description, FILE *fp){
     }
     
     archive->creation_date = (uint64_t) time(NULL);
-    archive->directory_offset = sizeof(uint32_t) + sizeof(uint64_t); /* magic 4 bytes + the offset location section */
-    archive->fp = malloc(sizeof(FILE)); // creating file pointer, opening the file and writing data is in archive_f
+    archive->directory_offset = 0; /* 0 = sentinel meaning "no directory written yet / no previous directory" */
+    archive->fp = fp; // the archive's backing file, provided by the caller.
     archive->groups = vector_create();
     archive->entries = vector_create();
     archive->fields = vector_create();
@@ -51,7 +52,7 @@ ErrorCode search_tree_gen(Archive * archive) {
     archive->search_tree = bst_create();
 
     // group data.
-    for (int i = 0; i < archive->groups->size; i++) {
+    for (size_t i = 0; i < archive->groups->size; i++) {
         Group * group = vector_at(archive->groups, i);
         if (!group) {
             error("search tree gen: null group pointer");
@@ -62,7 +63,7 @@ ErrorCode search_tree_gen(Archive * archive) {
         }
     }
     // entry data.
-    for (int i = 0; i < archive->entries->size; i++) {
+    for (size_t i = 0; i < archive->entries->size; i++) {
         Entry * entry = vector_at(archive->entries, i);
         if (!entry) {
             error("search tree gen: null entry pointer");
@@ -73,7 +74,7 @@ ErrorCode search_tree_gen(Archive * archive) {
         }
     }
     // field data.
-    for (int i = 0;  i < (int)archive->fields->size; i++) {
+    for (size_t i = 0;  i < archive->fields->size; i++) {
         Field * field = vector_at(archive->fields, i);
         if (!field) {
             error("search tree gen: null field pointer");
@@ -101,12 +102,14 @@ TNode *archive_find_entity(Archive *archive, char *entity_name) {
     }
 
     TNode *node = bst_find(archive->search_tree, entity_name);
+    if (!node) {
+        errorp("archive_find_entity: \"%s\" not found", entity_name);
+        return NULL;
+    }
     if (node->entity_type != FIELD && node->entity_type != ENTRY && node->entity_type != GROUP) {
         error("find_entity: invalid entity type");
     }
-    if (!node) {
-        errorp("archive_find_entity: \"%s\" not found", entity_name);
-    }
+    
     return node; /* NOTE: this function can return null if text is not found */
 }
 
@@ -191,7 +194,7 @@ char *archive_to_string(Archive *archive){
     char * string;
     asprintf(&string,
          "Archive \"%s\". version: %u. description: %s \n size: %u. number of groups: %u. number of entries: %u. number of fields: %u. \n number of changes: %u, is written: %u",
-        archive->name, archive->version, archive->description, (unsigned int) archive->size, archive->entries->size, archive->groups->size, (unsigned int) archive->fields->size, archive->num_of_changes, archive->written);
+        archive->name, archive->version, archive->description, (unsigned int) archive->size, (unsigned int)archive->entries->size, (unsigned int)archive->groups->size, (unsigned int) archive->fields->size, archive->num_of_changes, archive->written);
     if(!string){
         error("archive_to_string: failed.");
     }
@@ -210,8 +213,8 @@ Archive * archive_get_backward(Archive * archive, uint32_t steps){
     }
 
     for(uint32_t i = 0; i < steps; i++){
-        archive = read_directory(archive, archive->fp, archive->prev_dir_offset);
-        if(!archive){
+        ErrorCode result = read_directory(archive, archive->fp, archive->prev_dir_offset);
+        if(result != SUCCESS){
             error("archive_get_backward: couldn't get backward version by %u steps", steps);
         }
     }
@@ -234,16 +237,22 @@ Vector * archive_get_versions(Archive *archive){
         error("archive_get_versions: allocation for archive_versions failed.");
     }
 
-    uint32_t c = archive->num_of_changes;
-    while(c-->0){
-        archive_versions[c] = archive;
-        if(c > 0){
-            archive = archive_get_backward(archive, 1);
-            if(!archive){
-                free(archive_versions);
-                error("archive_get_versions: got null pointer in version %d", c);
+    archive_versions[num_of_changes - 1] = archive;
+
+    uint64_t prev_offset = archive->prev_dir_offset;
+    for (uint32_t i = num_of_changes - 1; i-- > 0; ) {
+        Archive *version = archive_create(NULL, NULL, archive->fp);
+        if (!version || read_directory(version, archive->fp, prev_offset) != SUCCESS) {
+            if (version) archive_destroy(version);
+            /* free versions already built before this failure. */
+            for (uint32_t j = i + 1; j < num_of_changes - 1; j++) {
+                archive_destroy(archive_versions[j]);
             }
+            free(archive_versions);
+            error("archive_get_versions: got null pointer in version %u", i);
         }
+        archive_versions[i] = version;
+        prev_offset = version->prev_dir_offset;
     }
     
     Vector * vector = vector_create();
@@ -277,13 +286,13 @@ uint64_t archive_size(Archive *archive){
         error("archive_size: couldn't create all fields BST.");
     }
 
-    for(uint32_t i = 0; i<versions->size; i++){
+    for(size_t i = 0; i<versions->size; i++){
         Archive *curr_archive = vector_at(versions, i);
         // add directory size
         directories_size += directory_size(curr_archive);
 
         Vector *curr_fields = curr_archive->fields;
-        for(uint32_t j = 0; j<curr_fields->size; j++){
+        for(size_t j = 0; j<curr_fields->size; j++){
             Field *curr_field = vector_at(curr_fields, j);
 
             TNode *curr_field_node = bst_find(all_fields, curr_field->name);
@@ -310,7 +319,7 @@ uint64_t archive_size(Archive *archive){
     }
 
     // clean old versions structs.
-    for(uint32_t i = 0; i < versions->size; i++){
+    for(size_t i = 0; i < versions->size; i++){
         Archive *curr_archive = vector_at(versions, i);
         // Protect the active archive from destruction
         if(curr_archive != archive){
@@ -333,7 +342,7 @@ uint64_t group_header_size(Group *group){
         ID_SIZE +
         DATE_SIZE*2 +
         STRING_LENGTH_SIZE +
-        (uint64_t) sizeof(group->name);
+        (uint64_t) strlen(group->name);
 }
 
 uint64_t entry_header_size(Entry *entry){
@@ -344,7 +353,7 @@ uint64_t entry_header_size(Entry *entry){
         ID_SIZE*2 +
         DATE_SIZE*2 +
         STRING_LENGTH_SIZE +
-        (uint64_t) sizeof(entry->name);
+        (uint64_t) strlen(entry->name);
 }
 
 uint64_t field_header_size(Field *field){
@@ -358,7 +367,7 @@ uint64_t field_header_size(Field *field){
         CRC_SIZE +
         DATE_SIZE*2 +
         STRING_LENGTH_SIZE +
-        (uint64_t) sizeof(field->name);
+        (uint64_t) strlen(field->name);
 }
 
 uint64_t local_field_header_size(Field *field){
@@ -372,7 +381,7 @@ uint64_t local_field_header_size(Field *field){
         CRC_SIZE +
         DATE_SIZE*2 +
         STRING_LENGTH_SIZE +
-        (uint64_t) sizeof(field->name);
+        (uint64_t) strlen(field->name);
 }
 
 uint64_t field_full_size(Field *field){
@@ -390,15 +399,15 @@ uint64_t directory_size(Archive *archive){
     uint64_t entry_headers_size= 0;
     uint64_t field_headers_size= 0;
 
-    for(int i = 0; i<(archive->fields->size); i++){
+    for(size_t i = 0; i<(archive->fields->size); i++){
         field_headers_size +=  field_header_size(archive->fields->data[i]);
     }
 
-    for(int i = 0; i<(archive->groups->size); i++){
+    for(size_t i = 0; i<(archive->groups->size); i++){
         group_headers_size += group_header_size(archive->groups->data[i]);
     }
 
-    for(int i = 0; i<(archive->entries->size); i++){
+    for(size_t i = 0; i<(archive->entries->size); i++){
         entry_headers_size += entry_header_size(archive->entries->data[i]);
     }
 
@@ -408,8 +417,8 @@ uint64_t directory_size(Archive *archive){
         DATE_SIZE*2 +
         ID_SIZE*3 +
         STRING_LENGTH_SIZE*2 +
-        (uint64_t) sizeof(archive->name) +
-        (uint64_t) sizeof(archive->description) +
+        (uint64_t) strlen(archive->name) +
+        (uint64_t) strlen(archive->description) +
         group_headers_size +
         entry_headers_size +
         field_headers_size +
@@ -432,8 +441,8 @@ ErrorCode write_group_header(Group * group){
         return FAILURE;
     }
 
-        /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp, 0, SEEK_END) != IO_enumWriteU32(group->archive->fp, MAGIC_NUMBER) != SUCCESS){
+    /* seek to the end of file and write magic number. */
+    if (IO_enumSeek(fp, 0, SEEK_END) != SUCCESS || IO_enumWriteU32(group->archive->fp, MAGIC_NUMBER) != SUCCESS) {
         error("write_group_header: could not write group header for group: %s. could not append to file.", group->name);
         return FAILURE;
     }
@@ -463,8 +472,8 @@ ErrorCode write_entry_header(Entry * entry){
         return FAILURE;
     }
 
-        /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp, 0, SEEK_END) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+    /* seek to the end of file and write magic number. */
+    if (IO_enumSeek(fp, 0, SEEK_END) != SUCCESS || IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS) {
         errorp("could not write entry header for entry: %s. could not append to file.", entry->name);
         return FAILURE;
     }
@@ -495,8 +504,8 @@ ErrorCode write_field_header(Field * field){
         return FAILURE;
     }
 
-        /* seek to the end of file and write magic number. */
-    if(IO_enumSeek(fp, 0 , SEEK_END) != IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS){
+    /* seek to the end of file and write magic number. */
+    if (IO_enumSeek(fp, 0 , SEEK_END) != SUCCESS || IO_enumWriteU32(fp, MAGIC_NUMBER) != SUCCESS) {
         error("could not write field header for field: %s. could not append to file.", field->name);
         return FAILURE;
     }
@@ -573,17 +582,17 @@ ErrorCode write_directory(Archive *archive){
 
     /* writing groups headers. */
     status+= IO_enumWriteU32(fp, archive->groups->size);
-    for(int i = 0; i < archive->groups->size; i++){
+    for(size_t i = 0; i < archive->groups->size; i++){
         status += write_group_header(vector_at(archive->groups, i));
     }
     /* writing entries headers. */
     status+= IO_enumWriteU32(fp, archive->entries->size);
-    for(int i = 0; i < archive->entries->size; i++){
+    for(size_t i = 0; i < archive->entries->size; i++){
         status += write_entry_header(vector_at(archive->entries, i));
     }
     /* writing fields headers*/
     status+= IO_enumWriteU32(fp, archive->fields->size);
-    for(int i = 0; i < archive->fields->size; i++){
+    for(size_t i = 0; i < archive->fields->size; i++){
         status += write_field_header(vector_at(archive->fields, i));
     }
 
@@ -771,6 +780,74 @@ static ErrorCode expect_magic(FILE *fp, const char *context) {
         errorp("expect_magic: bad magic number for %s", context);
         return ERROR_READ_FAILED;
     }
+    return SUCCESS;
+}
+
+static ErrorCode read_prefixed_string(FILE *fp, char **out_str) {
+    uint16_t length = 0;
+
+    if (!fp || !out_str) {
+        return NULL_POINTER;
+    }
+
+    if (IO_enumReadU16(fp, &length) != SUCCESS) {
+        errorp("read_prefixed_string: could not read string length.");
+        return ERROR_READ_FAILED;
+    }
+
+    return IO_charReadString(fp, length, out_str);
+}
+
+static Group *archive_find_group(Archive *archive, uint32_t group_id) {
+    if (!archive || !archive->groups) return NULL;
+
+    for (size_t i = 0; i < archive->groups->size; i++) {
+        Group *group = vector_at(archive->groups, i);
+        if (group && group->group_id == group_id) {
+            return group;
+        }
+    }
+    return NULL;
+}
+
+static Entry *archive_find_entry(Archive *archive, uint32_t entry_id) {
+    if (!archive || !archive->entries) return NULL;
+
+    for (size_t i = 0; i < archive->entries->size; i++) {
+        Entry *entry = vector_at(archive->entries, i);
+        if (entry && entry->entry_id == entry_id) {
+            return entry;
+        }
+    }
+    return NULL;
+}
+
+static ErrorCode archive_reset(Archive *archive) {
+    if (!archive) {
+        errorp("archive_reset: null pointer");
+        return NULL_POINTER;
+    }
+
+    for (size_t i = 0; i < archive->fields->size; i++) {
+        field_destroy(vector_at(archive->fields, i));
+    }
+    for (size_t i = 0; i < archive->entries->size; i++) {
+        entry_destroy(vector_at(archive->entries, i));
+    }
+    for (size_t i = 0; i < archive->groups->size; i++) {
+        group_destroy(vector_at(archive->groups, i));
+    }
+
+    vector_destroy(archive->groups);
+    vector_destroy(archive->entries);
+    vector_destroy(archive->fields);
+
+    archive->groups = vector_create();
+    archive->entries = vector_create();
+    archive->fields = vector_create();
+
+    archive->written = 0;
+
     return SUCCESS;
 }
 
@@ -999,6 +1076,25 @@ Field *read_field_header(Archive *archive, FILE *fp, uint64_t offset)
     field->type = (FieldType)type;
     field->content = NULL;
  
+    if ((field->type == TEXT || field->type == PASSWORD) && field->size > 0) {
+        uint64_t local_header_size = MAGIC_SIZE + ID_SIZE + TYPE_SIZE * 2 +
+                                      OFFSET_SIZE * 2 + CRC_SIZE + DATE_SIZE * 2 +
+                                      STRING_LENGTH_SIZE + strlen(field->name);
+        uint64_t saved_pos = IO_u64Tell(fp);
+        char *content = malloc((size_t) field->size + 1);
+        if (content) {
+            if (IO_enumSeek(fp, field->offset + local_header_size, SEEK_SET) == SUCCESS &&
+                IO_enumReadBytes(fp, content, (size_t) field->size) == SUCCESS) {
+                content[field->size] = '\0';
+                field->content = content;
+            } else {
+                errorp("could not read content for field %s.", field->name);
+                free(content);
+            }
+        }
+        IO_enumSeek(fp, saved_pos, SEEK_SET);
+    }
+ 
     return field;
 }
  
@@ -1133,8 +1229,6 @@ ErrorCode read_directory(Archive *archive, FILE *fp, uint64_t directory_offset)
         return ERROR_READ_FAILED;
     }
  
-    free(archive->name);
-    free(archive->description);
     archive->name = name;
     archive->description = description;
  

@@ -7,7 +7,10 @@ OBJ_DIR = obj
 BIN_DIR = bin
 
 # Automatically find all project module files in src/
-SRC_SRCS = $(shell find $(SRC_DIR) -name '*.c')
+# NOTE: crypto/ is excluded for now (its OpenSSL headers/include-paths
+# aren't sorted out yet). archive.c doesn't depend on it, so run_archive,
+# run_io and run_bst all still build fine without it.
+SRC_SRCS = $(filter-out $(SRC_DIR)/crypto/%,$(shell find $(SRC_DIR) -name '*.c'))
 SRC_OBJS = $(SRC_SRCS:src/%.c=$(OBJ_DIR)/src/%.o)
 
 # Default target executes all tests
