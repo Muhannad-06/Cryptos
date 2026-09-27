@@ -90,14 +90,14 @@ ErrorCode write_archive(Archive * archive); /* create or update archive content.
 ErrorCode write_archive_clean(Archive * archive, char *new_file_name); /* rewrite archive with clean history. */
 
 /* #TODO: read functions. */
-Group * read_group_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse group data.
-Group ** read_group_headers(Archive * archive, FILE *fp, uint64_t n_groups_offset); // seek to number of groups section offset and start parsing groups.
-Entry * read_entry_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse entry data.
-Entry ** read_entry_headers(Archive * archive, FILE *fp, uint64_t n_entries_offset); // seek to number of entries section offset and start parsing groups.
-Field * read_field_header(Archive * archive, FILE *fp, uint64_t offset); // seek to offset and parse field data.
-Entry ** read_field_headers(Archive * archive, FILE *fp, uint64_t n_fields_offset); // seek to number of fields section offset and start parsing groups.
-Archive * read_directory(FILE *fp, uint64_t directory_offset);
-Archive * read_archive(FILE *fp); // read directory.
+Group * read_group_header(Archive * archive, FILE *fp, uint64_t offset);
+Group ** read_group_headers(Archive * archive, FILE *fp, uint64_t n_groups_offset, uint32_t *out_count); 
+Entry * read_entry_header(Archive * archive, FILE *fp, uint64_t offset);
+Entry ** read_entry_headers(Archive * archive, FILE *fp, uint64_t n_entries_offset, uint32_t *out_count);
+Field * read_field_header(Archive * archive, FILE *fp, uint64_t offset);
+Field ** read_field_headers(Archive * archive, FILE *fp, uint64_t n_fields_offset, uint32_t *out_count); 
+ErrorCode read_directory(Archive *archive, FILE *fp, uint64_t directory_offset);
+ErrorCode read_archive(Archive *archive, FILE *fp);
 ErrorCode print_field_data(Field * field, FILE * stream); // print field data into stream.
 
 /* History functions. */

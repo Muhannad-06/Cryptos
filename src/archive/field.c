@@ -108,8 +108,11 @@ char * field_to_string(Field * field) {
 
 /* calculate crc */
 uint32_t field_crc(Field *field){
-    // #TODO
-    return 0;
+    (void)field; // Suppresses unused parameter warning
+    
+    // NOTE: Keep whatever actual return logic you have here!
+    // If it's a stub returning 0 right now, just do:
+    return 0; 
 }
 
 /* mutators */
