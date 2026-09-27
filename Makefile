@@ -10,7 +10,9 @@ BIN_DIR = bin
 # NOTE: crypto/ is excluded for now (its OpenSSL headers/include-paths
 # aren't sorted out yet). archive.c doesn't depend on it, so run_archive,
 # run_io and run_bst all still build fine without it.
-SRC_SRCS = $(filter-out $(SRC_DIR)/crypto/%,$(shell find $(SRC_DIR) -name '*.c'))
+# tools/ is also excluded here: it holds archive-cli's own main() and is
+# linked separately below so it doesn't clash with the test binaries' mains.
+SRC_SRCS = $(filter-out $(SRC_DIR)/crypto/% $(SRC_DIR)/tools/%,$(shell find $(SRC_DIR) -name '*.c'))
 SRC_OBJS = $(SRC_SRCS:src/%.c=$(OBJ_DIR)/src/%.o)
 
 # Default target executes all tests
@@ -25,6 +27,15 @@ $(OBJ_DIR)/src/%.o: src/%.c
 $(OBJ_DIR)/testing/%.o: testing/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+# ---------------------------------------------------------
+# archive-cli: interactive diskpart-style tool to test read/write
+# ---------------------------------------------------------
+$(BIN_DIR)/archive-cli: $(SRC_OBJS) $(OBJ_DIR)/src/tools/archive_cli.o
+	@mkdir -p $(dir $@)
+	$(CC) $^ -o $@
+
+archive-cli: $(BIN_DIR)/archive-cli
 
 # ---------------------------------------------------------
 # Executable Linking Rules
@@ -57,4 +68,4 @@ clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR) *.bin test_*.bin
 	find $(TEST_DIR) -name '*.o' -delete
 
-.PHONY: all clean run_archive run_io run_bst
+.PHONY: all clean run_archive run_io run_bst archive-cli
