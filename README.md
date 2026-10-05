@@ -121,7 +121,7 @@ cryptos/
 sudo apt update
 sudo apt install build-essential cmake libssl-dev
 
-git clone https://github.com/your-username/cryptos.git
+git clone https://github.com/Muhannad-06/Cryptos.git
 cd cryptos
 
 mkdir build && cd build
