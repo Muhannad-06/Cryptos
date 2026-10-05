@@ -78,6 +78,9 @@ When Cryptos opens an archive:
 2. It jumps directly to the directory and loads the structure into memory.
 3. It only reads field data from disk when needed.
 
+File Format Diagram:
+![Archive Structure](docs/structure.png)
+
 ---
 
 ## Project Structure
