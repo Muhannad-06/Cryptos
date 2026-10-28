@@ -1,7 +1,7 @@
 #ifndef ENTRY_H
 #define ENTRY_H
 
-#include "../types.h"
+#include "types.h"
 #include <stdint.h>
 
 typedef struct Group Group;

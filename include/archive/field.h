@@ -1,7 +1,7 @@
 #ifndef FIELD_H
 #define FIELD_H
 
-#include "../types.h"
+#include "types.h"
 #include <stdint.h>
 #include <stdlib.h>
 

@@ -1,57 +1,88 @@
-cmake_minimum_required(VERSION 3.10)
-project(
-        Cryptos
-        VERSION 0.0
-        DESCRIPTION "Archive file format"
-        LANGUAGES C
+cmake_minimum_required(VERSION 3.16)
+project(Archive
+        VERSION 0.1.0
+        DESCRIPTION "Archive file format inspired by ZIP"
+        LANGUAGES C)
+
+# ---------------------------------------------------------------------------
+# Global settings
+# ---------------------------------------------------------------------------
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)          # asprintf() and friends need GNU extensions
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
+
+# Keep binaries together: <build>/bin
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# ---------------------------------------------------------------------------
+# Core library (everything except src/tools, which contains main())
+# ---------------------------------------------------------------------------
+set(ARCHIVE_LIB_SOURCES
+    src/archive/archive.c
+    src/archive/entry.c
+    src/archive/field.c
+    src/archive/group.c
+    src/io/Bin_IO.c
+    src/utils/assertion.c
+    src/utils/bst.c
+    src/utils/error.c
+    src/utils/vector.c
 )
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+add_library(archive_core STATIC ${ARCHIVE_LIB_SOURCES})
+add_library(Archive::core ALIAS archive_core)
 
-# 1. FIND THE ZLIB LIBRARY ON LINUX SYSTEM
-find_package(ZLIB REQUIRED)
+# Sources include headers as "types.h", "archive/archive.h", "utils/bst.h", ...
+# so <root>/include is the single include root, exposed to all consumers.
+target_include_directories(archive_core PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
-# Gather core library source files (EXCLUDE files in src/tools/ that have a main function)
-file(GLOB_RECURSE LIB_SRCS
-        "src/archive/*.c"
-        "src/io/*.c"
-        "src/utils/*.c"
-        "src/crypto/*.c"
-)
+target_compile_options(archive_core PRIVATE
+    $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra>)
 
-# 1. CREATE THE TARGET BEFORE MODIFYING IT
-# This creates a library named "Cryptos" using the sources gathered above
-add_library(${PROJECT_NAME} ${LIB_SRCS})
+# ---------------------------------------------------------------------------
+# Command-line tool
+# ---------------------------------------------------------------------------
+add_executable(archive_cli src/tools/archive_cli.c)
+target_link_libraries(archive_cli PRIVATE archive_core)
+target_compile_options(archive_cli PRIVATE
+    $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra>)
 
-# 2. NOW APPLY INCLUDE DIRECTORIES TO THE TARGET
-target_include_directories(
-        ${PROJECT_NAME}
-        PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+option(ARCHIVE_BUILD_TESTS "Build the test executables" ON)
 
-# Adding Executables
-add_executable(
-        ARCHIVE_TEST
-        testing/archive/archive_test.c
-)
-add_executable(
-        BIN_IO_TEST
-        testing/io/bin_IO_test.c
-)
-add_executable(
-        BST_TEST
-        testing/utils/bst/bst_testing.c
-)
-add_executable(
-        ARCHIVE_CLI
-        src/tools/archive_cli.c
-)
+if(ARCHIVE_BUILD_TESTS)
+    include(CTest)
 
-# 3. LINK THE LIBRARY TO YOUR EXECUTABLES
-# You cannot link a library to itself. Link the core Cryptos library to each application.
-target_link_libraries(ARCHIVE_TEST PRIVATE ${PROJECT_NAME})
-target_link_libraries(BIN_IO_TEST PRIVATE ${PROJECT_NAME})
-target_link_libraries(BST_TEST PRIVATE ${PROJECT_NAME})
-target_link_libraries(ARCHIVE_CLI PRIVATE ${PROJECT_NAME})
+    add_executable(archive_test testing/archive/archive_test.c)
+    add_executable(bin_io_test  testing/io/bin_IO_test.c)
+    add_executable(bst_test     testing/utils/bst/bst_testing.c)
+
+    # archive_test compares its output against a reference file in its working dir.
+    # Drop cmp_archive.arc into testing/archive/ and it is copied automatically.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testing/archive/cmp_archive.arc)
+        configure_file(testing/archive/cmp_archive.arc
+                       ${CMAKE_BINARY_DIR}/test_run/archive_test/cmp_archive.arc COPYONLY)
+    else()
+        message(WARNING "testing/archive/cmp_archive.arc not found: archive_test will fail until it is added")
+    endif()
+
+    foreach(t archive_test bin_io_test bst_test)
+        target_link_libraries(${t} PRIVATE archive_core)
+        target_compile_options(${t} PRIVATE
+            $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra>)
+        # Run from a scratch dir so tests that create files don't litter the source tree.
+        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/test_run/${t})
+        add_test(NAME ${t}
+                 COMMAND $<TARGET_FILE:${t}>
+                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test_run/${t})
+    endforeach()
+endif()

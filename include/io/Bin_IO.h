@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "../types.h"
+#include "types.h"
 
 /*<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  * Primitive Writers (Little-Endian) * >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 * These functions serialize data from memory to a file.

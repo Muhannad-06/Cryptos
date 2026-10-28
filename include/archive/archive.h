@@ -4,12 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "../types.h"
-#include "../utils/vector.h"
+#include "types.h"
+#include "utils/vector.h"
 #include "group.h"
 #include "entry.h"
-#include"field.h"
-#include "../utils/bst.h"
+#include "field.h"
+#include "utils/bst.h"
 
 /* Archive current version */
 #define ARCHIVE_VERSION 0

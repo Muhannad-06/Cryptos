@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../include/io/Bin_IO.h"
-#include "../../include/types.h"
-#include "../../include/utils/error.h"
-#include "../../include/utils/assertion.h"
+#include "io/Bin_IO.h"
+#include "types.h"
+#include "utils/error.h"
+#include "utils/assertion.h"
 
 FILE *wfp;
 FILE *rfp;

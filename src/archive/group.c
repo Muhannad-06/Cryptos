@@ -1,6 +1,6 @@
-#include "../../include/archive/archive.h"
+#include "archive/archive.h"
 #include <stdint.h>
-#include "../../include/utils/error.h"
+#include "utils/error.h"
 #include <time.h>
 
 Group * group_create(Archive * archive, char *name){

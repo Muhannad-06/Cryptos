@@ -1,5 +1,5 @@
-#include "../../include/archive/archive.h"
-#include "../../include/utils/error.h"
+#include "archive/archive.h"
+#include "utils/error.h"
 #include <stdint.h>
 #include <time.h>
 

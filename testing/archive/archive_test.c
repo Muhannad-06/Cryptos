@@ -5,13 +5,13 @@
 // #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "../../include/types.h"
-#include "../../include/utils/error.h"
-#include "../../include/utils/assertion.h"
-#include "../../include/archive/archive.h"
-// #include "../../../include/archive/field.h"
-#include "../../include/archive/entry.h"
-// #include "../../../include/archive/archive.h"
+#include "types.h"
+#include "utils/error.h"
+#include "utils/assertion.h"
+#include "archive/archive.h"
+// #include "archive/field.h"
+#include "archive/entry.h"
+// #include "archive/archive.h"
 
 FILE * fp_cmp;
 FILE * fp_tst;

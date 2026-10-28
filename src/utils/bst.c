@@ -1,4 +1,4 @@
-#include "../../include/utils/bst.h"
+#include "utils/bst.h"
 #include "utils/error.h"
 #include <string.h>
 #include <stdio.h>

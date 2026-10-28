@@ -205,6 +205,14 @@ vault > quit
 
 ---
 
+## Building using CMake
+
+```bash
+# navigate to project folder
+cmake -S . -B build/
+cmake --build build/
+```
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).

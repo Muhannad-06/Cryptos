@@ -25,13 +25,13 @@
 #include <ctype.h>
 #include <errno.h>
 
-#include "../../include/types.h"
-#include "../../include/archive/archive.h"
-#include "../../include/archive/group.h"
-#include "../../include/archive/entry.h"
-#include "../../include/archive/field.h"
-#include "../../include/utils/vector.h"
-#include "../../include/utils/bst.h"
+#include "types.h"
+#include "archive/archive.h"
+#include "archive/group.h"
+#include "archive/entry.h"
+#include "archive/field.h"
+#include "utils/vector.h"
+#include "utils/bst.h"
 
 #define LINE_MAX_LEN 4096
 

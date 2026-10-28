@@ -1,5 +1,5 @@
-#include "../../include/utils/vector.h"
-#include "../../include/utils/error.h"
+#include "utils/vector.h"
+#include "utils/error.h"
 #include <stdio.h> 
 #include <stdlib.h>
 

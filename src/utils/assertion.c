@@ -1,5 +1,5 @@
-#include "../../include/types.h"
-#include "../../include/utils/assertion.h"
+#include "types.h"
+#include "utils/assertion.h"
 #include <stdio.h>
 
 #include "utils/error.h"

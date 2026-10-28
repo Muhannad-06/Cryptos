@@ -3,7 +3,7 @@
 #ifndef BST_H
 #define BST_H
 #include <stdlib.h>
-#include "../types.h"
+#include "types.h"
 
 typedef enum{
     GROUP,

@@ -4,5 +4,5 @@
 build/*
 bin/*
 obj/*
-*.txt
+#*.txt
 .idea/

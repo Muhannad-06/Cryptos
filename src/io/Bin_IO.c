@@ -1,10 +1,10 @@
-#include "../../include/io/Bin_IO.h"
+#include "io/Bin_IO.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../include/types.h"
+#include "types.h"
 
 ErrorCode IO_enumWriteU8(FILE *fp, uint8_t value)
 {

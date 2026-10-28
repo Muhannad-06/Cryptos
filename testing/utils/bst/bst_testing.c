@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-#include "../../../include/utils/bst.h"
-#include "../../../include/utils/assertion.h"
-#include "../../../include/types.h"
+#include "utils/bst.h"
+#include "utils/assertion.h"
+#include "types.h"
 
 BST *bst;
 

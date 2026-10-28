@@ -1,8 +1,8 @@
-#include "../../include/archive/archive.h"
-#include "../../include/io/Bin_IO.h"
-#include "../../include/utils/error.h"
-#include "../../include/utils/crc.h"
-#include "../../include/utils/bst.h"
+#include "archive/archive.h"
+#include "io/Bin_IO.h"
+#include "utils/error.h"
+#include "utils/crc.h"
+#include "utils/bst.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>

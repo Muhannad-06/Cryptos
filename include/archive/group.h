@@ -2,7 +2,7 @@
 #define GROUP_H
 
 #include <stdint.h>
-#include "../types.h"
+#include "types.h"
 
 typedef struct Archive Archive;
 typedef struct Entry Entry;
